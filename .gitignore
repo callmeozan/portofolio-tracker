@@ -27,3 +27,11 @@ dist-ssr
 .vercel
 public/logos/*.png
 !public/logos/.gitkeep
+.env*
+
+# Keluarkan file recovery dari staging
+git restore --staged recovery-codes.txt
+
+# Tambahkan ke .gitignore agar tidak terlacak lagi
+echo recovery-codes.txt >> .gitignore
+git add .gitignore

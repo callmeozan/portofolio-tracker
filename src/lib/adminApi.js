@@ -31,3 +31,5 @@ export async function adminMutate(table, action, { id, payload } = {}) {
   if (!res.ok) throw new Error(data.error || 'Gagal menyimpan')
   return true
 }
+
+const ALLOWED_TABLES = ['holdings', 'closed_positions', 'dividends', 'portfolio_settings', 'journal_entries']

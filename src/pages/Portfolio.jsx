@@ -10,6 +10,7 @@ import { checkMemberSession, memberLogin, memberLogout, fetchPortfolioData } fro
 import AdminRowForm from '../components/AdminRowForm'
 import MemberPasswordForm from '../components/MemberPasswordForm'
 import TickerBadge from '../components/TickerBadge'
+import Journal from './Journal'
 
 const FOUNDED_DATE = '2024-10-08'
 
@@ -27,7 +28,6 @@ export default function Portfolio() {
   const [closed, setClosed] = useState([])
   const [dividends, setDividends] = useState([])
   const [settings, setSettings] = useState({ id: 1, sisa_cash: 0, announcement: null })
-  const [reactions, setReactions] = useState([])
   const [picked, setPicked] = useState(() => {
     try { return new Set(JSON.parse(localStorage.getItem('pp_reacted') || '[]')) } catch { return new Set() }
   })
@@ -42,9 +42,11 @@ export default function Portfolio() {
   const [loginError, setLoginError] = useState(null)
   const [loggingIn, setLoggingIn] = useState(false)
   const [showMemberPasswordForm, setShowMemberPasswordForm] = useState(false)
+  const [activeTab, setActiveTab] = useState('summary')
 
   // { table, row } -- row null berarti form "tambah baru"
   const [formTarget, setFormTarget] = useState(null)
+  const [deleteTarget, setDeleteTarget] = useState(null)
 
   useEffect(() => {
     checkMemberSession().then((member) => {
@@ -70,7 +72,6 @@ export default function Portfolio() {
       setClosed(data.closed_positions)
       setDividends(data.dividends)
       setSettings(data.portfolio_settings)
-      setReactions(data.reactions)
       const years = data.closed_positions.length
         ? [...new Set(data.closed_positions.map((row) => new Date(row.tanggal_jual).getFullYear()))]
         : []
@@ -117,11 +118,9 @@ export default function Portfolio() {
     else nextPicked.add(emoji)
     setPicked(nextPicked)
     localStorage.setItem('pp_reacted', JSON.stringify([...nextPicked]))
-    setReactions((prev) => prev.map((r) => (r.emoji === emoji ? { ...r, count: Math.max(r.count + delta, 0) } : r)))
 
     const { error } = await supabase.rpc('increment_reaction', { emoji_key: emoji, delta })
     if (error) {
-      setReactions((prev) => prev.map((r) => (r.emoji === emoji ? { ...r, count: Math.max(r.count - delta, 0) } : r)))
       const rollback = new Set(nextPicked)
       if (alreadyPicked) rollback.add(emoji)
       else rollback.delete(emoji)
@@ -171,11 +170,12 @@ export default function Portfolio() {
     setIsAdmin(false)
   }
 
-  async function handleDelete(table, id) {
-    if (!window.confirm('Hapus baris ini? Gak bisa di-undo.')) return
+  async function executeDelete() {
+    if (!deleteTarget) return
     try {
-      await adminMutate(table, 'delete', { id })
-      loadAll()
+      await adminMutate(deleteTarget.table, 'delete', { id: deleteTarget.id })
+      setDeleteTarget(null)
+      loadAll() // Memuat ulang data
     } catch (err) {
       alert(err.message)
     }
@@ -185,6 +185,64 @@ export default function Portfolio() {
     setFormTarget(null)
     loadAll()
   }
+
+  // Komponen Modal Konfirmasi Hapus
+function ConfirmModal({ isOpen, title, message, onConfirm, onCancel }) {
+  if (!isOpen) return null
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        backgroundColor: 'rgba(15, 23, 42, 0.65)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 10000,
+        padding: '1rem',
+      }}
+    >
+      <div
+        style={{
+          background: '#fff',
+          borderRadius: '12px',
+          width: '100%',
+          maxWidth: '400px',
+          padding: '1.5rem',
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.15)',
+          textAlign: 'center',
+        }}
+      >
+        <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🗑️</div>
+        <h4 style={{ margin: '0 0 0.5rem 0', color: '#0f172a', fontSize: '1.1rem' }}>
+          {title || 'Konfirmasi Hapus'}
+        </h4>
+        <p style={{ color: '#64748b', fontSize: '0.9rem', margin: '0 0 1.5rem 0', lineHeight: 1.5 }}>
+          {message || 'Data yang dihapus tidak bisa dikembalikan.'}
+        </p>
+        <div style={{ display: 'flex', gap: '0.6rem', justifyContent: 'center' }}>
+          <button
+            type="button"
+            className="btn-sm btn-ghost"
+            style={{ minWidth: '80px', padding: '0.45rem 1rem' }}
+            onClick={onCancel}
+          >
+            Batal
+          </button>
+          <button
+            type="button"
+            className="btn-sm btn-danger"
+            style={{ minWidth: '80px', padding: '0.45rem 1rem' }}
+            onClick={onConfirm}
+          >
+            Ya, Hapus
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
 
   // ============================================================
   // GATE: belum lolos password member -> jangan render data apapun
@@ -244,6 +302,15 @@ export default function Portfolio() {
 
   return (
     <div className="page" style={{ position: 'relative' }}>
+
+      <ConfirmModal
+        isOpen={deleteTarget !== null}
+        title="Hapus Data Ini?"
+        message={`Baris data dari tabel ${deleteTarget?.table} ini akan dihapus permanen.`}
+        onConfirm={executeDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
+
       <header className="masthead">
         <div className="brand">
           <div className="logo"><img src="/favicon-180.png" alt="SDN" style={{ width: '100%', height: '100%', objectFit: 'contain' }} /></div>
@@ -251,6 +318,24 @@ export default function Portfolio() {
             <div className="eyebrow">Saham Dari Nol</div>
             <h1>Portofolio Palsu</h1>
           </div>
+        </div>
+
+        {/* --- Tombol Navigasi Tab --- */}
+        <div className="nav-tabs" style={{ display: 'flex', gap: '0.4rem' }}>
+          <button
+            type="button"
+            className={`btn-sm ${activeTab === 'summary' ? 'btn-primary' : 'btn-ghost'}`}
+            onClick={() => setActiveTab('summary')}
+          >
+            📊 Ringkasan Saham
+          </button>
+          <button
+            type="button"
+            className={`btn-sm ${activeTab === 'journal' ? 'btn-primary' : 'btn-ghost'}`}
+            onClick={() => setActiveTab('journal')}
+          >
+            📑 Jurnal Fundamental
+          </button>
         </div>
 
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
@@ -303,6 +388,8 @@ export default function Portfolio() {
 
       {!error && (
         <>
+        {activeTab === 'summary' ? (
+          <>
           {settings.announcement ? (
             <div className="announcement">
               <span className="icon">📢</span>
@@ -322,32 +409,11 @@ export default function Portfolio() {
                 </button>
               )}
             </div>
-          ) : isAdmin ? (
-            <button
-              className="btn-sm btn-primary"
-              style={{ marginBottom: '1.5rem' }}
-              onClick={() => setFormTarget({ table: 'portfolio_settings', row: settings })}
-            >
-              + Tambah Pengumuman
-            </button>
           ) : null}
 
           {formTarget?.table === 'portfolio_settings' && (
             <AdminRowForm table="portfolio_settings" editingRow={formTarget.row} onDone={closeForm} onCancel={() => setFormTarget(null)} />
           )}
-
-          <div className="reactions-row">
-            {reactions.map((r) => (
-              <button
-                key={r.emoji}
-                className={`reaction-btn${picked.has(r.emoji) ? ' picked' : ''}`}
-                onClick={() => handleReact(r.emoji)}
-              >
-                <span className="emoji">{r.emoji}</span>
-                <span className="count num">{r.count}</span>
-              </button>
-            ))}
-          </div>
 
           <div className="summary-row">
             <div className="summary-cell">
@@ -439,7 +505,8 @@ export default function Portfolio() {
                           {isAdmin && (
                             <td className="row-actions row-actions-cell" data-label="">
                               <button className="btn-link" onClick={() => setFormTarget({ table: 'holdings', row: h })}>Edit</button>
-                              <button className="btn-danger" onClick={() => handleDelete('holdings', h.id)}>Hapus</button>
+                              {/* <button className="btn-danger" onClick={() => handleDelete('holdings', h.id)}>Hapus</button> */}
+                              <button className="btn-danger" onClick={() => setDeleteTarget({ table: 'holdings', id: h.id })}>Hapus</button>
                             </td>
                           )}
                         </tr>
@@ -514,7 +581,8 @@ export default function Portfolio() {
                                     {isAdmin && (
                                       <td className="row-actions row-actions-cell" data-label="">
                                         <button className="btn-link" onClick={() => setFormTarget({ table: 'closed_positions', row: c })}>Edit</button>
-                                        <button className="btn-danger" onClick={() => handleDelete('closed_positions', c.id)}>Hapus</button>
+                                        {/* <button className="btn-danger" onClick={() => handleDelete('closed_positions', c.id)}>Hapus</button> */}
+                                        <button className="btn-danger" onClick={() => setDeleteTarget({ table: 'closed_positions', id: c.id })}>Hapus</button>
                                       </td>
                                     )}
                                   </tr>
@@ -572,7 +640,8 @@ export default function Portfolio() {
                           {isAdmin && (
                             <td className="row-actions row-actions-cell" data-label="">
                               <button className="btn-link" onClick={() => setFormTarget({ table: 'dividends', row: d })}>Edit</button>
-                              <button className="btn-danger" onClick={() => handleDelete('dividends', d.id)}>Hapus</button>
+                              {/* <button className="btn-danger" onClick={() => handleDelete('dividends', d.id)}>Hapus</button> */}
+                              <button className="btn-danger" onClick={() => setDeleteTarget({ table: 'dividends', id: d.id })}>Hapus</button>
                             </td>
                           )}
                         </tr>
@@ -584,6 +653,10 @@ export default function Portfolio() {
             </div>
           </section>
         </>
+        ) : (
+          <Journal isAdmin={isAdmin} />
+      )}
+      </>
       )}
 
       <footer className="pp-footer">
