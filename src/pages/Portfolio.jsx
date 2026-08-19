@@ -12,7 +12,7 @@ import MemberPasswordForm from '../components/MemberPasswordForm'
 import TickerBadge from '../components/TickerBadge'
 import Journal from './Journal'
 
-const FOUNDED_DATE = '2024-10-08'
+// const FOUNDED_DATE = '2024-10-08'
 
 export default function Portfolio() {
   // ---------- member gate ----------
@@ -27,7 +27,7 @@ export default function Portfolio() {
   const [holdings, setHoldings] = useState([])
   const [closed, setClosed] = useState([])
   const [dividends, setDividends] = useState([])
-  const [settings, setSettings] = useState({ id: 1, sisa_cash: 0, announcement: null })
+  const [settings, setSettings] = useState({ id: 1, sisa_cash: 0, announcement: null, founded_date: '2024-10-08' })
   const [picked, setPicked] = useState(() => {
     try { return new Set(JSON.parse(localStorage.getItem('pp_reacted') || '[]')) } catch { return new Set() }
   })
@@ -381,7 +381,8 @@ function ConfirmModal({ isOpen, title, message, onConfirm, onCancel }) {
         <span className="item"><span className="dot" />
           {latestPriceUpdate ? `Harga terakhir diperbarui ${new Date(latestPriceUpdate).toLocaleString('id-ID')}` : 'Menunggu update harga...'}
         </span>
-        <span className="item">Portofolio ini berjalan sejak <strong>{formatDate(FOUNDED_DATE)}</strong></span>
+        {/* <span className="item">Portofolio ini berjalan sejak <strong>{formatDate(FOUNDED_DATE)}</strong></span> */}
+        <span className="item">Portofolio ini berjalan sejak <strong>{formatDate(settings?.founded_date || '2024-10-08')}</strong></span>
       </p>
 
       {error && <p className="empty">Gagal memuat data: {error}</p>}

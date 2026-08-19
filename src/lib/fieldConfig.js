@@ -29,6 +29,7 @@ export const FIELD_CONFIG = {
   portfolio_settings: [
     { name: 'announcement', label: 'Pengumuman', type: 'textarea' },
     { name: 'sisa_cash', label: 'Sisa Cash', type: 'number' },
+    { name: 'founded_date', label: 'Tanggal Mulai Portofolio', type: 'date' },
   ],
 }
 
