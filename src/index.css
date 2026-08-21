@@ -498,58 +498,67 @@ textarea {
 }
 
 @media (max-width: 640px) {
-  .page { padding: 1.25rem 0.9rem 3rem; }
-  .brand-text h1 { font-size: 1.1rem; }
-  .lock-popover { right: 0.9rem; left: 0.9rem; width: auto; }
+  .page { 
+    padding: 1rem 0.75rem 4rem; 
+  }
+  
+  .brand-text h1 { 
+    font-size: 1.15rem; 
+  }
+  
+  .lock-popover { 
+    right: 0.75rem; 
+    left: 0.75rem; 
+    width: auto; 
+  }
 
   .summary-row {
     grid-template-columns: repeat(2, 1fr);
   }
+  
   .summary-cell .value {
-    font-size: 0.95rem;
+    font-size: 0.88rem;
   }
 
-  table, thead, tbody, tr, td { display: block; width: 100%; }
-  thead { display: none; }
+  /* Biarkan tabel tetap berbentuk tabel normal & bisa di-scroll ke samping */
+  .table-card {
+    border-radius: 10px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .table-card table {
+    min-width: 780px; /* Lebar minimum agar kolom tidak gepeng di mobile */
+    display: table !important;
+  }
+
+  thead {
+    display: table-header-group !important;
+  }
+
+  tbody {
+    display: table-row-group !important;
+  }
 
   tbody tr {
-  background: var(--card-bg);
+    display: table-row !important;
+    padding: 0 !important;
   }
-  tbody tr:last-child { border-bottom: none; }
 
-  td {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    gap: 0.75rem;
-    padding: 0.28rem 0;
-    border-bottom: none;
+  td, th {
+    display: table-cell !important;
+    padding: 0.6rem 0.65rem !important;
   }
+
   td::before {
-    content: attr(data-label);
-    color: var(--ink-soft);
-    font-size: 0.7rem;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-    flex-shrink: 0;
+    content: none !important; /* Hapus label ganda */
   }
-  td.right { text-align: right; }
 
   td.kode-row {
-    padding: 0 0 0.5rem;
-    margin-bottom: 0.4rem;
-    border-bottom: 1px dashed var(--line);
-    font-size: 1rem;
-    justify-content: flex-start;
+    border-bottom: 1px solid var(--line) !important;
+    margin-bottom: 0 !important;
+    padding: 0.6rem 0.65rem !important;
+    font-size: inherit !important;
   }
-  td.kode-row::before { content: none; }
-
-  td.row-actions-cell {
-  text-align: right;
-  white-space: nowrap;
-  padding-right: 1rem;
-  }
-  td.row-actions-cell::before { content: none; }
 }
 
 @media (max-width: 420px) {
