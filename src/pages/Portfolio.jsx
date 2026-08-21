@@ -50,6 +50,20 @@ export default function Portfolio() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [expandedYears, setExpandedYears] = useState(null)
+  // Tambahkan tepat di bawah fungsi toggleYear milikmu:
+  const [expandedDivYears, setExpandedDivYears] = useState(new Set([new Date().getFullYear()]))
+
+  const toggleDivYear = (year) => {
+    setExpandedDivYears((prev) => {
+      const next = new Set(prev)
+      if (next.has(year)) {
+        next.delete(year)
+      } else {
+        next.add(year)
+      }
+      return next
+    })
+  }
 
   // ---------- admin ----------
   const [isAdmin, setIsAdmin] = useState(false)
@@ -67,6 +81,7 @@ export default function Portfolio() {
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem('theme') || 'light'
   })
+  
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
@@ -706,7 +721,10 @@ function ConfirmModal({ isOpen, title, message, onConfirm, onCancel }) {
             <div className="section-head">
               <div>
                 <h2><span className="idx">03</span> Penerimaan Dividen</h2>
-                <p className="note">Total dividen diterima sejak portofolio ini dibuat: <strong className="num gain">{formatRp(totals.totalDividen)}</strong></p>
+                <p className="note">
+                  Total dividen diterima sejak portofolio ini dibuat:{' '}
+                  <strong className="num gain">{formatRp(totals.totalDividen)}</strong>
+                </p>
               </div>
               {isAdmin && (
                 <button className="btn-sm btn-primary" onClick={() => setFormTarget({ table: 'dividends', row: null })}>+ Tambah</button>
@@ -717,54 +735,94 @@ function ConfirmModal({ isOpen, title, message, onConfirm, onCancel }) {
               <AdminRowForm table="dividends" editingRow={formTarget.row} onDone={closeForm} onCancel={() => setFormTarget(null)} />
             )}
 
-            <div className="table-card">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Tanggal</th><th>Kode</th><th className="right">Lot</th>
-                    <th className="right">Div/Saham</th><th className="right">Yield</th><th className="right">Total Dividen</th>
-                    {isAdmin && <th></th>}
-                  </tr>
-                </thead>
-
-                {/* 1. Kondisi Loading */}
-                {loading ? (
-                  <TableSkeleton rows={3} cols={isAdmin ? 7 : 6} />
-                ) : dividends.length === 0 ? (
-                  /* 2. Kondisi Data Kosong */
-                  <tbody>
+            {loading ? (
+              <div className="table-card">
+                <table>
+                  <thead>
                     <tr>
-                      <td colSpan={isAdmin ? 7 : 6} className="empty">
-                        Belum ada riwayat dividen.
-                      </td>
+                      <th>Tanggal</th><th>Kode</th><th className="right">Lot</th>
+                      <th className="right">Div/Saham</th><th className="right">Yield</th><th className="right">Total Dividen</th>
+                      {isAdmin && <th></th>}
                     </tr>
-                  </tbody>
-                ) : (
-                  /* 3. Render Data Dividen */
-                  <tbody>
-                    {dividends.map((d) => {
-                      const m = dividendMetrics(d)
-                      return (
-                        <tr key={d.id}>
-                          <td data-label="Tanggal">{formatDate(d.tanggal_terima)}</td>
-                          <td className="kode kode-row" data-label=""><span className="ticker-cell"><TickerBadge kode={d.kode_saham} />{d.kode_saham}</span></td>
-                          <td data-label="Lot" className="right num">{d.jumlah_lot}</td>
-                          <td data-label="Div/Saham" className="right num">{formatRp(d.dividen_per_saham)}</td>
-                          <td data-label="Yield" className="right num gain">{formatPct(m.yieldPct)}</td>
-                          <td data-label="Total" className="right num gain">{formatRp(m.totalDividen)}</td>
-                          {isAdmin && (
-                            <td className="row-actions row-actions-cell" data-label="">
-                              <button className="btn-link" onClick={() => setFormTarget({ table: 'dividends', row: d })}>Edit</button>
-                              <button className="btn-danger" onClick={() => setDeleteTarget({ table: 'dividends', id: d.id })}>Hapus</button>
-                            </td>
-                          )}
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                )}
-              </table>
-            </div>
+                  </thead>
+                  <TableSkeleton rows={3} cols={isAdmin ? 7 : 6} />
+                </table>
+              </div>
+            ) : dividends.length === 0 ? (
+              <div className="table-card"><p className="empty">Belum ada riwayat dividen.</p></div>
+            ) : (
+              Object.entries(
+                dividends.reduce((acc, d) => {
+                  const year = new Date(d.tanggal_terima).getFullYear()
+                  if (!acc[year]) acc[year] = []
+                  acc[year].push(d)
+                  return acc
+                }, {})
+              )
+                .sort((a, b) => Number(b[0]) - Number(a[0]))
+                .map(([year, rows]) => {
+                  const isOpen = expandedDivYears?.has(Number(year))
+                  const yearTotalDiv = rows.reduce((acc, d) => {
+                    const m = dividendMetrics(d)
+                    return acc + Number(m.totalDividen || 0)
+                  }, 0)
+
+                  return (
+                    <div key={year} className="year-group">
+                      <button className="year-toggle" onClick={() => toggleDivYear(Number(year))}>
+                        {/* Sisi Kiri: Tanda Panah & Tahun */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <span>{isOpen ? '▾' : '▸'}</span>
+                          <span>{year}</span>
+                        </div>
+
+                        {/* Sisi Kanan: Jumlah Pembayaran & Badge Total Dividen */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <span className="badge-count">{rows.length} pembayaran</span>
+                          <span className="badge-pill badge-gain">
+                            {formatRp(yearTotalDiv)}
+                          </span>
+                        </div>
+                      </button>
+
+                      {isOpen && (
+                        <div className="table-card">
+                          <table>
+                            <thead>
+                              <tr>
+                                <th>Tanggal</th><th>Kode</th><th className="right">Lot</th>
+                                <th className="right">Div/Saham</th><th className="right">Yield</th><th className="right">Total Dividen</th>
+                                {isAdmin && <th></th>}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {rows.map((d) => {
+                                const m = dividendMetrics(d)
+                                return (
+                                  <tr key={d.id}>
+                                    <td data-label="Tanggal">{formatDate(d.tanggal_terima)}</td>
+                                    <td className="kode kode-row" data-label=""><span className="ticker-cell"><TickerBadge kode={d.kode_saham} />{d.kode_saham}</span></td>
+                                    <td data-label="Lot" className="right num">{d.jumlah_lot}</td>
+                                    <td data-label="Div/Saham" className="right num">{formatRp(d.dividen_per_saham)}</td>
+                                    <td data-label="Yield" className="right num gain">{formatPct(m.yieldPct)}</td>
+                                    <td data-label="Total" className="right num gain">{formatRp(m.totalDividen)}</td>
+                                    {isAdmin && (
+                                      <td className="row-actions row-actions-cell" data-label="">
+                                        <button className="btn-link" onClick={() => setFormTarget({ table: 'dividends', row: d })}>Edit</button>
+                                        <button className="btn-danger" onClick={() => setDeleteTarget({ table: 'dividends', id: d.id })}>Hapus</button>
+                                      </td>
+                                    )}
+                                  </tr>
+                                )
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })
+            )}
           </section>
         </>
         ) : (

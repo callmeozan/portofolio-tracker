@@ -117,3 +117,11 @@
   border-left: 3px solid #f59e0b;
   color: #fbbf24;
 }
+
+.journal-ticker-logo img,
+.journal-ticker-logo svg {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+  display: block;
+}

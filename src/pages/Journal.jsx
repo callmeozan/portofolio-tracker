@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import JournalForm from '../components/JournalForm'
 import '../components/Journal.css'
+import TickerBadge from '../components/TickerBadge'
 
 // Komponen Card Satuan Jurnal (dengan Tampilan Metrik Lengkap)
 function JournalCard({ item, isAdmin, onEdit, onDelete }) {
@@ -35,34 +36,64 @@ function JournalCard({ item, isAdmin, onEdit, onDelete }) {
         }}
         onClick={() => setIsOpen((prev) => !prev)}
       >
-        <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '0.85rem', alignItems: 'center' }}>
+          {/* Ikon Panah */}
           <span style={{ fontSize: '0.85rem', color: 'var(--ink-soft)', fontWeight: 'bold' }}>
             {isOpen ? '▼' : '▶'}
           </span>
-          <span
+
+          {/* Logo Emiten Proporsional */}
+          <div
+            className="journal-ticker-logo"
             style={{
-              fontWeight: 'bold',
-              background: 'var(--surface-hover)',
-              color: 'var(--ink)',
+              width: '34px',
+              height: '34px',
+              minWidth: '34px',
+              minHeight: '34px',
+              borderRadius: '50%',
+              overflow: 'hidden',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: 'var(--surface)',
               border: '1px solid var(--line)',
-              padding: '0.2rem 0.6rem',
-              borderRadius: '4px',
-              fontSize: '0.85rem',
+              flexShrink: 0,
             }}
           >
-            {item.kode_saham}
-          </span>
-          <strong style={{ fontSize: '1.05rem', color: 'var(--ink)' }}>
-            {item.nama_perusahaan}
-          </strong>
-          <span style={{ fontSize: '0.8rem', background: 'var(--surface)', padding: '0.2rem 0.5rem', borderRadius: '4px', color: 'var(--ink-soft)' }}>
-            {(() => {
-              if (!item.kuartal) return '—'
-              const q = item.kuartal.match(/Q[1-4]/i)?.[0]?.toUpperCase()
-              const yr = item.kuartal.match(/\d{4}/)?.[0]
-              return q && yr ? `${q} ${yr}` : item.kuartal
-            })()}
-          </span>
+            <TickerBadge kode={item.kode_saham} size={34} />
+          </div>
+
+          {/* Nama PT (Atas) & Kode Emiten + Kuartal (Bawah) */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+            <strong style={{ fontSize: '1rem', color: 'var(--ink)', lineHeight: '1.2' }}>
+              {item.nama_perusahaan}
+            </strong>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span
+                style={{
+                  fontFamily: 'JetBrains Mono, monospace',
+                  fontWeight: 700,
+                  color: 'var(--ink-soft)',
+                  fontSize: '0.82rem',
+                  letterSpacing: '0.5px',
+                }}
+              >
+                {item.kode_saham}
+              </span>
+
+              <span style={{ color: 'var(--line)', fontSize: '0.8rem' }}>•</span>
+
+              <span style={{ fontSize: '0.75rem', background: 'var(--surface)', padding: '0.1rem 0.45rem', borderRadius: '4px', color: 'var(--ink-soft)' }}>
+                {(() => {
+                  if (!item.kuartal) return '—'
+                  const q = item.kuartal.match(/Q[1-4]/i)?.[0]?.toUpperCase()
+                  const yr = item.kuartal.match(/\d{4}/)?.[0]
+                  return q && yr ? `${q} ${yr}` : item.kuartal
+                })()}
+              </span>
+            </div>
+          </div>
         </div>
 
         <div
