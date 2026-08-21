@@ -632,12 +632,32 @@ function ConfirmModal({ isOpen, title, message, onConfirm, onCancel }) {
                 .sort((a, b) => Number(b[0]) - Number(a[0]))
                 .map(([year, rows]) => {
                   const isOpen = expandedYears?.has(Number(year))
+
+                  // Hitung total realisasi gain/loss pada tahun ini
+                  const yearGainLoss = rows.reduce((acc, c) => {
+                    const beli = Number(c.nilai_beli || 0)
+                    const jual = Number(c.nilai_jual || 0)
+                    return acc + (jual - beli)
+                  }, 0)
+
                   return (
                     <div key={year} className="year-group">
                       <button className="year-toggle" onClick={() => toggleYear(Number(year))}>
-                        <span>{isOpen ? '▾' : '▸'} {year}</span>
-                        <span className="tag">{rows.length} transaksi</span>
+                        {/* Sisi Kiri: Tanda Panah & Tahun */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <span>{isOpen ? '▾' : '▸'}</span>
+                          <span>{year}</span>
+                        </div>
+
+                        {/* Sisi Kanan: Jumlah Transaksi & Badge Akumulasi Nominal */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <span className="badge-count">{rows.length} transaksi</span>
+                          <span className={`badge-pill ${yearGainLoss >= 0 ? 'badge-gain' : 'badge-loss'}`}>
+                            {yearGainLoss >= 0 ? `+${formatRp(yearGainLoss)}` : formatRp(yearGainLoss)}
+                          </span>
+                        </div>
                       </button>
+
                       {isOpen && (
                         <div className="table-card">
                           <table>

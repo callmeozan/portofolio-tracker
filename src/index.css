@@ -520,14 +520,14 @@ textarea {
     font-size: 0.88rem;
   }
 
-  /* Biarkan tabel tetap berbentuk tabel normal & bisa di-scroll ke samping */
+  /* Buat tabel scrollable ke samping di mobile */
   .table-card {
     border-radius: 10px;
     -webkit-overflow-scrolling: touch;
   }
 
   .table-card table {
-    min-width: 780px; /* Lebar minimum agar kolom tidak gepeng di mobile */
+    min-width: 780px;
     display: table !important;
   }
 
@@ -550,7 +550,7 @@ textarea {
   }
 
   td::before {
-    content: none !important; /* Hapus label ganda */
+    content: none !important;
   }
 
   td.kode-row {
@@ -565,4 +565,52 @@ textarea {
   .summary-row {
     grid-template-columns: 1fr;
   }
+}
+
+/* ---------- Badge Akumulasi & Jumlah Transaksi ---------- */
+.badge-count {
+  font-size: 0.72rem;
+  color: var(--ink-soft);
+  background: var(--surface-hover);
+  border: 1px solid var(--line);
+  padding: 0.15rem 0.55rem;
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+.badge-pill {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.15rem 0.6rem;
+  border-radius: 6px;
+  letter-spacing: -0.02em;
+}
+
+/* Light mode styling */
+.badge-gain {
+  background: rgba(34, 197, 94, 0.12);
+  color: #15803d;
+  border: 1px solid rgba(34, 197, 94, 0.25);
+}
+
+.badge-loss {
+  background: rgba(239, 68, 68, 0.12);
+  color: #b91c1c;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+/* Dark mode glowing text & borders */
+[data-theme="dark"] .badge-gain {
+  color: #4ade80;
+  background: rgba(34, 197, 94, 0.15);
+  border-color: rgba(74, 222, 128, 0.35);
+  text-shadow: 0 0 8px rgba(74, 222, 128, 0.4);
+}
+
+[data-theme="dark"] .badge-loss {
+  color: #ff5252;
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(255, 82, 82, 0.35);
+  text-shadow: 0 0 8px rgba(255, 82, 82, 0.4);
 }
