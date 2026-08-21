@@ -70,7 +70,7 @@ export default function JournalForm({ editingRow, onDone, onCancel }) {
 
       const { error: uploadError } = await supabase.storage
         .from('journal-images')
-        .upload(fileName, file) // Langsung pakai nama file
+        .upload(fileName, file)
 
       if (uploadError) throw uploadError
 
@@ -122,9 +122,8 @@ export default function JournalForm({ editingRow, onDone, onCancel }) {
   }
 
   // -------------------------------------------------------------
-  // Simpan ke Supabase via adminMutate
+  // Simpan ke Supabase
   // -------------------------------------------------------------
-  
   const handleSubmit = async (e) => {
     e.preventDefault()
     setSubmitting(true)
@@ -180,200 +179,182 @@ export default function JournalForm({ editingRow, onDone, onCancel }) {
   }
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        backgroundColor: 'rgba(15, 23, 42, 0.65)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 9999,
-        padding: '1rem',
-      }}
-    >
+    <div className="admin-modal-overlay" onClick={onCancel}>
       <div
-        style={{
-          background: '#fff',
-          borderRadius: '12px',
-          width: '100%',
-          maxWidth: '750px',
-          maxHeight: '90vh',
-          overflowY: 'auto',
-          padding: '1.75rem',
-          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
-        }}
+        className="admin-modal-card"
+        style={{ maxWidth: '750px' }}
+        onClick={(e) => e.stopPropagation()}
       >
-        <h3 style={{ margin: '0 0 1.25rem 0', color: '#0f172a' }}>
-          {editingRow ? 'Edit Catatan Jurnal' : '+ Tambah Jurnal Fundamental'}
-        </h3>
+        <div className="admin-modal-head">
+          <h3 style={{ margin: 0, color: 'var(--ink)' }}>
+            {editingRow ? 'Edit Catatan Jurnal' : '+ Tambah Jurnal Fundamental'}
+          </h3>
+          <button type="button" className="admin-modal-close" onClick={onCancel}>×</button>
+        </div>
 
         <form onSubmit={handleSubmit}>
           {/* Section 1: Informasi Dasar */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.8rem', marginBottom: '1.2rem' }}>
             <div>
-              <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#475569' }}>Kode Saham</label>
+              <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--ink-soft)' }}>Kode Saham</label>
               <input
                 type="text"
                 required
                 placeholder="ACES"
                 value={kodeSaham}
                 onChange={(e) => setKodeSaham(e.target.value)}
-                style={{ width: '100%', padding: '0.45rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                style={{ width: '100%', padding: '0.45rem', borderRadius: '6px' }}
               />
             </div>
             <div style={{ gridColumn: 'span 2' }}>
-              <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#475569' }}>Nama Perusahaan</label>
+              <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--ink-soft)' }}>Nama Perusahaan</label>
               <input
                 type="text"
                 required
                 placeholder="PT Aspirasi Hidup Indonesia Tbk"
                 value={namaPerusahaan}
                 onChange={(e) => setNamaPerusahaan(e.target.value)}
-                style={{ width: '100%', padding: '0.45rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                style={{ width: '100%', padding: '0.45rem', borderRadius: '6px' }}
               />
             </div>
             <div>
-            <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#475569' }}>Kuartal</label>
-            <select
-              value={kuartal.split(' ')[0]} // Ambil prefix Q1/Q2/Q3/Q4 jika sebelumnya ada tahun
-              onChange={(e) => setKuartal(e.target.value)}
-              style={{ width: '100%', padding: '0.45rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
-            >
-              <option value="Q1">Q1</option>
-              <option value="Q2">Q2</option>
-              <option value="Q3">Q3</option>
-              <option value="Q4">Q4 (Tahunan)</option>
-            </select>
+              <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--ink-soft)' }}>Kuartal</label>
+              <select
+                value={kuartal.split(' ')[0]}
+                onChange={(e) => setKuartal(e.target.value)}
+                style={{ width: '100%', padding: '0.45rem', borderRadius: '6px', fontSize: '0.85rem' }}
+              >
+                <option value="Q1">Q1</option>
+                <option value="Q2">Q2</option>
+                <option value="Q3">Q3</option>
+                <option value="Q4">Q4 (Tahunan)</option>
+              </select>
             </div>
             <div>
-              <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#475569' }}>Tanggal Rilis</label>
+              <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--ink-soft)' }}>Tanggal Rilis</label>
               <input
                 type="date"
                 value={tanggalUpdate}
                 onChange={(e) => setTanggalUpdate(e.target.value)}
-                style={{ width: '100%', padding: '0.45rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                style={{ width: '100%', padding: '0.45rem', borderRadius: '6px' }}
               />
             </div>
           </div>
 
           {/* Section 2: Metrik Finansial */}
-          <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '8px', marginBottom: '1.2rem', border: '1px solid #e2e8f0' }}>
-            <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#1e293b', display: 'block', marginBottom: '0.75rem' }}>
+          <div style={{ background: 'var(--surface)', padding: '1rem', borderRadius: '8px', marginBottom: '1.2rem', border: '1px solid var(--line)' }}>
+            <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--ink)', display: 'block', marginBottom: '0.75rem' }}>
               📊 Rasio Keuangan & Metrik Valuasi (Opsional)
             </span>
             
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.6rem' }}>
-              {/* Pertumbuhan (Growth) */}
               <div>
-                <label style={{ fontSize: '0.72rem', color: '#64748b' }}>Revenue YoY</label>
+                <label style={{ fontSize: '0.72rem', color: 'var(--ink-soft)' }}>Revenue YoY</label>
                 <input
                   type="text"
                   placeholder="+12.5%"
                   value={revenueYoy}
                   onChange={(e) => setRevenueYoy(e.target.value)}
-                  style={{ width: '100%', padding: '0.4rem', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '0.82rem' }}
+                  style={{ width: '100%', padding: '0.4rem', borderRadius: '4px', fontSize: '0.82rem' }}
                 />
               </div>
 
               <div>
-                <label style={{ fontSize: '0.72rem', color: '#64748b' }}>Net Profit YoY</label>
+                <label style={{ fontSize: '0.72rem', color: 'var(--ink-soft)' }}>Net Profit YoY</label>
                 <input
                   type="text"
                   placeholder="+24.0%"
                   value={netProfitYoy}
                   onChange={(e) => setNetProfitYoy(e.target.value)}
-                  style={{ width: '100%', padding: '0.4rem', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '0.82rem' }}
+                  style={{ width: '100%', padding: '0.4rem', borderRadius: '4px', fontSize: '0.82rem' }}
                 />
               </div>
 
-              {/* Profitabilitas & Kesehatan Neraca */}
               <div>
-                <label style={{ fontSize: '0.72rem', color: '#64748b' }}>NPM (Net Margin)</label>
+                <label style={{ fontSize: '0.72rem', color: 'var(--ink-soft)' }}>NPM (Net Margin)</label>
                 <input
                   type="text"
                   placeholder="14.2%"
                   value={npm}
                   onChange={(e) => setNpm(e.target.value)}
-                  style={{ width: '100%', padding: '0.4rem', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '0.82rem' }}
+                  style={{ width: '100%', padding: '0.4rem', borderRadius: '4px', fontSize: '0.82rem' }}
                 />
               </div>
 
               <div>
-                <label style={{ fontSize: '0.72rem', color: '#64748b' }}>ROE</label>
+                <label style={{ fontSize: '0.72rem', color: 'var(--ink-soft)' }}>ROE</label>
                 <input
                   type="text"
                   placeholder="18.5%"
                   value={roe}
                   onChange={(e) => setRoe(e.target.value)}
-                  style={{ width: '100%', padding: '0.4rem', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '0.82rem' }}
+                  style={{ width: '100%', padding: '0.4rem', borderRadius: '4px', fontSize: '0.82rem' }}
                 />
               </div>
 
               <div>
-                <label style={{ fontSize: '0.72rem', color: '#64748b' }}>DER (Utang/Modal)</label>
+                <label style={{ fontSize: '0.72rem', color: 'var(--ink-soft)' }}>DER (Utang/Modal)</label>
                 <input
                   type="text"
                   placeholder="0.45x"
                   value={der}
                   onChange={(e) => setDer(e.target.value)}
-                  style={{ width: '100%', padding: '0.4rem', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '0.82rem' }}
+                  style={{ width: '100%', padding: '0.4rem', borderRadius: '4px', fontSize: '0.82rem' }}
                 />
               </div>
 
-              {/* Valuasi & Return Saham */}
               <div>
-                <label style={{ fontSize: '0.72rem', color: '#64748b' }}>PER / PBV</label>
+                <label style={{ fontSize: '0.72rem', color: 'var(--ink-soft)' }}>PER / PBV</label>
                 <input
                   type="text"
                   placeholder="PER 8.5x | PBV 1.2x"
                   value={per}
                   onChange={(e) => setPer(e.target.value)}
-                  style={{ width: '100%', padding: '0.4rem', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '0.82rem' }}
+                  style={{ width: '100%', padding: '0.4rem', borderRadius: '4px', fontSize: '0.82rem' }}
                 />
               </div>
 
               <div>
-                <label style={{ fontSize: '0.72rem', color: '#64748b' }}>Target Harga</label>
+                <label style={{ fontSize: '0.72rem', color: 'var(--ink-soft)' }}>Target Harga</label>
                 <input
                   type="text"
                   placeholder="Rp 1.050"
                   value={targetHarga}
                   onChange={(e) => setTargetHarga(e.target.value)}
-                  style={{ width: '100%', padding: '0.4rem', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '0.82rem' }}
+                  style={{ width: '100%', padding: '0.4rem', borderRadius: '4px', fontSize: '0.82rem' }}
                 />
               </div>
 
               <div>
-                <label style={{ fontSize: '0.72rem', color: '#64748b' }}>Fair Value</label>
+                <label style={{ fontSize: '0.72rem', color: 'var(--ink-soft)' }}>Fair Value</label>
                 <input
                   type="text"
                   placeholder="Rp 1.200"
                   value={fairValue}
                   onChange={(e) => setFairValue(e.target.value)}
-                  style={{ width: '100%', padding: '0.4rem', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '0.82rem' }}
+                  style={{ width: '100%', padding: '0.4rem', borderRadius: '4px', fontSize: '0.82rem' }}
                 />
               </div>
 
               <div>
-                <label style={{ fontSize: '0.72rem', color: '#64748b' }}>Margin of Safety</label>
+                <label style={{ fontSize: '0.72rem', color: 'var(--ink-soft)' }}>Margin of Safety</label>
                 <input
                   type="text"
                   placeholder="25%"
                   value={mos}
                   onChange={(e) => setMos(e.target.value)}
-                  style={{ width: '100%', padding: '0.4rem', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '0.82rem' }}
+                  style={{ width: '100%', padding: '0.4rem', borderRadius: '4px', fontSize: '0.82rem' }}
                 />
               </div>
 
               <div>
-                <label style={{ fontSize: '0.72rem', color: '#64748b' }}>Div. Yield Est.</label>
+                <label style={{ fontSize: '0.72rem', color: 'var(--ink-soft)' }}>Div. Yield Est.</label>
                 <input
                   type="text"
                   placeholder="6.2%"
                   value={dividenYield}
                   onChange={(e) => setDividenYield(e.target.value)}
-                  style={{ width: '100%', padding: '0.4rem', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '0.82rem' }}
+                  style={{ width: '100%', padding: '0.4rem', borderRadius: '4px', fontSize: '0.82rem' }}
                 />
               </div>
             </div>
@@ -382,7 +363,7 @@ export default function JournalForm({ editingRow, onDone, onCancel }) {
           {/* Section 3: Referensi Dokumen / Link Video */}
           <div style={{ marginBottom: '1.2rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-              <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#475569' }}>Referensi & Lampiran Dokumen</span>
+              <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--ink-soft)' }}>Referensi & Lampiran Dokumen</span>
               <button type="button" className="btn-link" style={{ fontSize: '0.75rem' }} onClick={handleAddRef}>+ Tambah Link</button>
             </div>
             {referensi.map((r, idx) => (
@@ -390,9 +371,8 @@ export default function JournalForm({ editingRow, onDone, onCancel }) {
                 <select
                   value={r.tipe}
                   onChange={(e) => handleRefChange(idx, 'tipe', e.target.value)}
-                  style={{ padding: '0.4rem', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '0.8rem' }}
+                  style={{ padding: '0.4rem', borderRadius: '4px', fontSize: '0.8rem' }}
                 >
-                  {/* <option value="video">🎬 Video</option> */}
                   <option value="dokumen">📁 PDF / Drive</option>
                   <option value="berita">📰 Berita</option>
                 </select>
@@ -401,31 +381,31 @@ export default function JournalForm({ editingRow, onDone, onCancel }) {
                   placeholder="Label (contoh: Jurnal PDF)"
                   value={r.label}
                   onChange={(e) => handleRefChange(idx, 'label', e.target.value)}
-                  style={{ flex: 1, padding: '0.4rem', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '0.8rem' }}
+                  style={{ flex: 1, padding: '0.4rem', borderRadius: '4px', fontSize: '0.8rem' }}
                 />
                 <input
                   type="url"
                   placeholder="URL link..."
                   value={r.url}
                   onChange={(e) => handleRefChange(idx, 'url', e.target.value)}
-                  style={{ flex: 1.5, padding: '0.4rem', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '0.8rem' }}
+                  style={{ flex: 1.5, padding: '0.4rem', borderRadius: '4px', fontSize: '0.8rem' }}
                 />
                 <button type="button" className="btn-danger" style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }} onClick={() => handleRemoveRef(idx)}>✕</button>
               </div>
             ))}
           </div>
 
-          {/* Section 4: Catatan Narasi & Screenshot Lapkeu (Dinamis) */}
+          {/* Section 4: Catatan Narasi & Screenshot Lapkeu */}
           <div style={{ marginBottom: '1.5rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-              <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#475569' }}>Catatan Riset & Bukti Lapkeu</span>
+              <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--ink-soft)' }}>Catatan Riset & Bukti Lapkeu</span>
               <button type="button" className="btn-link" style={{ fontSize: '0.75rem' }} onClick={handleAddBlok}>+ Tambah Paragraf/Blok</button>
             </div>
 
             {catatanRiset.map((blok, blokIdx) => (
-              <div key={blokIdx} style={{ background: '#f8fafc', padding: '0.8rem', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '0.8rem' }}>
+              <div key={blokIdx} style={{ background: 'var(--surface)', padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--line)', marginBottom: '0.8rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b' }}>Bagian #{blokIdx + 1}</span>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--ink-soft)' }}>Bagian #{blokIdx + 1}</span>
                   {catatanRiset.length > 1 && (
                     <button type="button" className="btn-danger" style={{ fontSize: '0.7rem', padding: '0.1rem 0.4rem' }} onClick={() => handleRemoveBlok(blokIdx)}>Hapus Bagian</button>
                   )}
@@ -435,27 +415,25 @@ export default function JournalForm({ editingRow, onDone, onCancel }) {
                   placeholder="Tulis analisa mendalam atau ringkasan baris laporan keuangan di sini..."
                   value={blok.paragraf}
                   onChange={(e) => handleParagrafChange(blokIdx, e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', marginBottom: '0.5rem' }}
+                  style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', fontSize: '0.85rem', marginBottom: '0.5rem' }}
                 />
 
-                {/* Daftar Screenshot yang Diupload */}
                 {blok.gambar_lapkeu?.map((img, imgIdx) => (
-                  <div key={imgIdx} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.4rem', background: '#fff', padding: '0.4rem', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                  <div key={imgIdx} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.4rem', background: 'var(--card-bg)', padding: '0.4rem', borderRadius: '6px', border: '1px solid var(--line)' }}>
                     <img src={img.url} alt="lapkeu" style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px' }} />
                     <input
                       type="text"
                       placeholder="Caption gambar (contoh: CaLK No 13 Aset Tetap)"
                       value={img.caption}
                       onChange={(e) => handleCaptionChange(blokIdx, imgIdx, e.target.value)}
-                      style={{ flex: 1, padding: '0.35rem', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '0.8rem' }}
+                      style={{ flex: 1, padding: '0.35rem', borderRadius: '4px', fontSize: '0.8rem' }}
                     />
                     <button type="button" className="btn-danger" style={{ fontSize: '0.7rem', padding: '0.2rem 0.4rem' }} onClick={() => handleRemoveImage(blokIdx, imgIdx)}>✕</button>
                   </div>
                 ))}
 
-                {/* Input File Upload Gambar */}
                 <div>
-                  <label style={{ display: 'inline-block', cursor: 'pointer', fontSize: '0.75rem', color: '#2563eb', fontWeight: 500 }}>
+                  <label style={{ display: 'inline-block', cursor: 'pointer', fontSize: '0.75rem', color: '#38bdf8', fontWeight: 500 }}>
                     {uploadingIndex === blokIdx ? '⏳ Mengunggah gambar...' : '📷 + Upload Screenshot Lapkeu'}
                     <input
                       type="file"
@@ -471,7 +449,7 @@ export default function JournalForm({ editingRow, onDone, onCancel }) {
           </div>
 
           {/* Tombol Aksi */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.6rem', borderTop: '1px solid #e2e8f0', paddingTop: '1rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.6rem', borderTop: '1px solid var(--line)', paddingTop: '1rem' }}>
             <button type="button" className="btn-sm btn-ghost" onClick={onCancel} disabled={submitting}>Batal</button>
             <button type="submit" className="btn-sm btn-primary" disabled={submitting}>
               {submitting ? 'Menyimpan...' : 'Simpan Catatan'}

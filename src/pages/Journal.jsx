@@ -1,28 +1,24 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
-import { adminMutate } from '../lib/adminApi'
-import JournalForm from '../components/JournalForm' // Import form modal
+import JournalForm from '../components/JournalForm'
 import '../components/Journal.css'
 
-// Komponen Card Satuan Jurnal (dengan Accordion)
 // Komponen Card Satuan Jurnal (dengan Tampilan Metrik Lengkap)
 function JournalCard({ item, isAdmin, onEdit, onDelete }) {
   if (!item) return null
   const [isOpen, setIsOpen] = useState(false)
   const m = item.metrik || {}
 
-  // Cek apakah ada minimal salah satu rasio keuangan terisi
   const hasRatios = m.revenue_yoy || m.net_profit_yoy || m.npm || m.roe || m.der || m.per || m.pbv
-  // Cek apakah ada minimal salah satu valuasi terisi
   const hasValuation = m.target_harga || m.fair_value || m.mos || m.dividen_yield
 
   return (
     <div
       className="journal-card"
       style={{
-        background: '#fff',
+        background: 'var(--card-bg)',
         borderRadius: '10px',
-        border: '1px solid #e2e8f0',
+        border: '1px solid var(--line)',
         padding: '1.25rem 1.5rem',
         marginBottom: '1rem',
         transition: 'all 0.2s ease',
@@ -40,14 +36,15 @@ function JournalCard({ item, isAdmin, onEdit, onDelete }) {
         onClick={() => setIsOpen((prev) => !prev)}
       >
         <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
-          <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 'bold' }}>
+          <span style={{ fontSize: '0.85rem', color: 'var(--ink-soft)', fontWeight: 'bold' }}>
             {isOpen ? '▼' : '▶'}
           </span>
           <span
             style={{
               fontWeight: 'bold',
-              background: '#0f172a',
-              color: '#fff',
+              background: 'var(--surface-hover)',
+              color: 'var(--ink)',
+              border: '1px solid var(--line)',
               padding: '0.2rem 0.6rem',
               borderRadius: '4px',
               fontSize: '0.85rem',
@@ -55,10 +52,10 @@ function JournalCard({ item, isAdmin, onEdit, onDelete }) {
           >
             {item.kode_saham}
           </span>
-          <strong style={{ fontSize: '1.05rem', color: '#1e293b' }}>
+          <strong style={{ fontSize: '1.05rem', color: 'var(--ink)' }}>
             {item.nama_perusahaan}
           </strong>
-          <span style={{ fontSize: '0.8rem', background: '#f1f5f9', padding: '0.2rem 0.5rem', borderRadius: '4px', color: '#64748b' }}>
+          <span style={{ fontSize: '0.8rem', background: 'var(--surface)', padding: '0.2rem 0.5rem', borderRadius: '4px', color: 'var(--ink-soft)' }}>
             {(() => {
               if (!item.kuartal) return '—'
               const q = item.kuartal.match(/Q[1-4]/i)?.[0]?.toUpperCase()
@@ -72,7 +69,7 @@ function JournalCard({ item, isAdmin, onEdit, onDelete }) {
           style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}
           onClick={(e) => e.stopPropagation()}
         >
-          <span style={{ fontSize: '0.85rem', color: '#64748b' }}>{item.tanggal_update}</span>
+          <span style={{ fontSize: '0.85rem', color: 'var(--ink-soft)' }}>{item.tanggal_update}</span>
           {isAdmin && (
             <div style={{ display: 'flex', gap: '0.4rem' }}>
               <button className="btn-sm btn-ghost" onClick={() => onEdit?.(item)}>Edit</button>
@@ -88,40 +85,40 @@ function JournalCard({ item, isAdmin, onEdit, onDelete }) {
           style={{
             marginTop: '0.75rem',
             paddingTop: '0.75rem',
-            borderTop: '1px dashed #f1f5f9',
+            borderTop: '1px dashed var(--line)',
             display: 'flex',
             gap: '1.2rem',
             fontSize: '0.82rem',
-            color: '#64748b',
+            color: 'var(--ink-soft)',
             cursor: 'pointer',
             flexWrap: 'wrap',
           }}
           onClick={() => setIsOpen(true)}
         >
-          {m.target_harga && <span>🎯 Target: <strong style={{ color: '#0f172a' }}>{m.target_harga}</strong></span>}
-          {m.fair_value && <span>💎 Fair Value: <strong style={{ color: '#0f172a' }}>{m.fair_value}</strong></span>}
+          {m.target_harga && <span>🎯 Target: <strong style={{ color: 'var(--ink)' }}>{m.target_harga}</strong></span>}
+          {m.fair_value && <span>💎 Fair Value: <strong style={{ color: 'var(--ink)' }}>{m.fair_value}</strong></span>}
           {m.revenue_yoy && <span>📈 Rev YoY: <strong style={{ color: '#0284c7' }}>{m.revenue_yoy}</strong></span>}
-          {m.net_profit_yoy && <span>🚀 Profit YoY: <strong style={{ color: '#16a34a' }}>{m.net_profit_yoy}</strong></span>}
-          {m.dividen_yield && <span>💰 Div Yield: <strong style={{ color: '#16a34a' }}>{m.dividen_yield}</strong></span>}
+          {m.net_profit_yoy && <span>🚀 Profit YoY: <strong className="gain">{m.net_profit_yoy}</strong></span>}
+          {m.dividen_yield && <span>💰 Div Yield: <strong className="gain">{m.dividen_yield}</strong></span>}
         </div>
       )}
 
       {/* 2. Detail Konten Lengkap */}
       {isOpen && (
-        <div style={{ marginTop: '1.25rem', paddingTop: '1.25rem', borderTop: '1px solid #e2e8f0' }}>
+        <div style={{ marginTop: '1.25rem', paddingTop: '1.25rem', borderTop: '1px solid var(--line)' }}>
           
           {/* Tautan Dokumen / Video / Referensi */}
           {item.referensi && item.referensi.length > 0 && (
             <div
               style={{
-                background: '#f8fafc',
+                background: 'var(--surface)',
                 padding: '0.8rem 1rem',
                 borderRadius: '8px',
                 marginBottom: '1.2rem',
-                border: '1px solid #e2e8f0',
+                border: '1px solid var(--line)',
               }}
             >
-              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b', display: 'block', marginBottom: '0.4rem', textTransform: 'uppercase' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--ink-soft)', display: 'block', marginBottom: '0.4rem', textTransform: 'uppercase' }}>
                 Lampiran & Referensi Riset
               </span>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
@@ -132,11 +129,11 @@ function JournalCard({ item, isAdmin, onEdit, onDelete }) {
                       href={ref.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      style={{ color: '#2563eb', textDecoration: 'none', fontWeight: 500 }}
+                      style={{ color: '#38bdf8', textDecoration: 'none', fontWeight: 500 }}
                     >
                       {ref.label || ref.url}
                     </a>
-                    {ref.sumber && <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}> — {ref.sumber}</span>}
+                    {ref.sumber && <span style={{ color: 'var(--ink-soft)', fontSize: '0.8rem' }}> — {ref.sumber}</span>}
                   </div>
                 ))}
               </div>
@@ -153,69 +150,66 @@ function JournalCard({ item, isAdmin, onEdit, onDelete }) {
                   gap: '0.6rem',
                 }}
               >
-                {/* 1. Valuasi */}
                 {m.target_harga && (
-                  <div style={{ background: '#f8fafc', padding: '0.7rem', borderRadius: '6px', border: '1px solid #edf2f7' }}>
-                    <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block' }}>Target Harga</span>
-                    <strong style={{ fontSize: '0.95rem', color: '#0f172a' }}>{m.target_harga}</strong>
+                  <div style={{ background: 'var(--surface)', padding: '0.7rem', borderRadius: '6px', border: '1px solid var(--line)' }}>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--ink-soft)', display: 'block' }}>Target Harga</span>
+                    <strong style={{ fontSize: '0.95rem', color: 'var(--ink)' }}>{m.target_harga}</strong>
                   </div>
                 )}
                 {m.fair_value && (
-                  <div style={{ background: '#f8fafc', padding: '0.7rem', borderRadius: '6px', border: '1px solid #edf2f7' }}>
-                    <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block' }}>Fair Value</span>
-                    <strong style={{ fontSize: '0.95rem', color: '#0f172a' }}>{m.fair_value}</strong>
+                  <div style={{ background: 'var(--surface)', padding: '0.7rem', borderRadius: '6px', border: '1px solid var(--line)' }}>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--ink-soft)', display: 'block' }}>Fair Value</span>
+                    <strong style={{ fontSize: '0.95rem', color: 'var(--ink)' }}>{m.fair_value}</strong>
                   </div>
                 )}
                 {m.mos && (
-                  <div style={{ background: '#f8fafc', padding: '0.7rem', borderRadius: '6px', border: '1px solid #edf2f7' }}>
-                    <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block' }}>Margin of Safety</span>
-                    <strong style={{ fontSize: '0.95rem', color: '#0f172a' }}>{m.mos}</strong>
+                  <div style={{ background: 'var(--surface)', padding: '0.7rem', borderRadius: '6px', border: '1px solid var(--line)' }}>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--ink-soft)', display: 'block' }}>Margin of Safety</span>
+                    <strong style={{ fontSize: '0.95rem', color: 'var(--ink)' }}>{m.mos}</strong>
                   </div>
                 )}
                 {m.dividen_yield && (
-                  <div style={{ background: '#f8fafc', padding: '0.7rem', borderRadius: '6px', border: '1px solid #edf2f7' }}>
-                    <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block' }}>Div. Yield</span>
-                    <strong style={{ fontSize: '0.95rem', color: '#16a34a' }}>{m.dividen_yield}</strong>
+                  <div style={{ background: 'var(--surface)', padding: '0.7rem', borderRadius: '6px', border: '1px solid var(--line)' }}>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--ink-soft)', display: 'block' }}>Div. Yield</span>
+                    <strong className="gain" style={{ fontSize: '0.95rem' }}>{m.dividen_yield}</strong>
                   </div>
                 )}
 
-                {/* 2. Pertumbuhan & Kinerja */}
                 {m.revenue_yoy && (
-                  <div style={{ background: '#f8fafc', padding: '0.7rem', borderRadius: '6px', border: '1px solid #edf2f7' }}>
-                    <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block' }}>Revenue YoY</span>
+                  <div style={{ background: 'var(--surface)', padding: '0.7rem', borderRadius: '6px', border: '1px solid var(--line)' }}>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--ink-soft)', display: 'block' }}>Revenue YoY</span>
                     <strong style={{ fontSize: '0.95rem', color: '#0284c7' }}>{m.revenue_yoy}</strong>
                   </div>
                 )}
                 {m.net_profit_yoy && (
-                  <div style={{ background: '#f8fafc', padding: '0.7rem', borderRadius: '6px', border: '1px solid #edf2f7' }}>
-                    <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block' }}>Net Profit YoY</span>
-                    <strong style={{ fontSize: '0.95rem', color: '#16a34a' }}>{m.net_profit_yoy}</strong>
+                  <div style={{ background: 'var(--surface)', padding: '0.7rem', borderRadius: '6px', border: '1px solid var(--line)' }}>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--ink-soft)', display: 'block' }}>Net Profit YoY</span>
+                    <strong className="gain" style={{ fontSize: '0.95rem' }}>{m.net_profit_yoy}</strong>
                   </div>
                 )}
 
-                {/* 3. Profitabilitas & Neraca */}
                 {m.npm && (
-                  <div style={{ background: '#f8fafc', padding: '0.7rem', borderRadius: '6px', border: '1px solid #edf2f7' }}>
-                    <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block' }}>NPM (Margin)</span>
-                    <strong style={{ fontSize: '0.95rem', color: '#0f172a' }}>{m.npm}</strong>
+                  <div style={{ background: 'var(--surface)', padding: '0.7rem', borderRadius: '6px', border: '1px solid var(--line)' }}>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--ink-soft)', display: 'block' }}>NPM (Margin)</span>
+                    <strong style={{ fontSize: '0.95rem', color: 'var(--ink)' }}>{m.npm}</strong>
                   </div>
                 )}
                 {m.roe && (
-                  <div style={{ background: '#f8fafc', padding: '0.7rem', borderRadius: '6px', border: '1px solid #edf2f7' }}>
-                    <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block' }}>ROE</span>
-                    <strong style={{ fontSize: '0.95rem', color: '#0f172a' }}>{m.roe}</strong>
+                  <div style={{ background: 'var(--surface)', padding: '0.7rem', borderRadius: '6px', border: '1px solid var(--line)' }}>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--ink-soft)', display: 'block' }}>ROE</span>
+                    <strong style={{ fontSize: '0.95rem', color: 'var(--ink)' }}>{m.roe}</strong>
                   </div>
                 )}
                 {m.der && (
-                  <div style={{ background: '#f8fafc', padding: '0.7rem', borderRadius: '6px', border: '1px solid #edf2f7' }}>
-                    <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block' }}>DER (Utang)</span>
-                    <strong style={{ fontSize: '0.95rem', color: '#0f172a' }}>{m.der}</strong>
+                  <div style={{ background: 'var(--surface)', padding: '0.7rem', borderRadius: '6px', border: '1px solid var(--line)' }}>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--ink-soft)', display: 'block' }}>DER (Utang)</span>
+                    <strong style={{ fontSize: '0.95rem', color: 'var(--ink)' }}>{m.der}</strong>
                   </div>
                 )}
                 {m.per && (
-                  <div style={{ background: '#f8fafc', padding: '0.7rem', borderRadius: '6px', border: '1px solid #edf2f7' }}>
-                    <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block' }}>PER / PBV</span>
-                    <strong style={{ fontSize: '0.95rem', color: '#0f172a' }}>{m.per}</strong>
+                  <div style={{ background: 'var(--surface)', padding: '0.7rem', borderRadius: '6px', border: '1px solid var(--line)' }}>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--ink-soft)', display: 'block' }}>PER / PBV</span>
+                    <strong style={{ fontSize: '0.95rem', color: 'var(--ink)' }}>{m.per}</strong>
                   </div>
                 )}
               </div>
@@ -223,7 +217,7 @@ function JournalCard({ item, isAdmin, onEdit, onDelete }) {
           )}
 
           {/* Catatan Riset Naratif & Bukti Screenshot Lapkeu */}
-          <div className="journal-content" style={{ fontSize: '0.95rem', lineHeight: '1.6', color: '#334155' }}>
+          <div className="journal-content" style={{ fontSize: '0.95rem', lineHeight: '1.6', color: 'var(--ink)' }}>
             {item.catatan_riset?.map((blok, i) => (
               <div key={i} style={{ marginBottom: '1.5rem' }}>
                 {blok.paragraf && (
@@ -235,10 +229,10 @@ function JournalCard({ item, isAdmin, onEdit, onDelete }) {
                     style={{
                       margin: '1rem 0',
                       textAlign: 'center',
-                      background: '#f8fafc',
+                      background: 'var(--surface)',
                       padding: '0.6rem',
                       borderRadius: '8px',
-                      border: '1px solid #e2e8f0',
+                      border: '1px solid var(--line)',
                     }}
                   >
                     <img
@@ -252,7 +246,7 @@ function JournalCard({ item, isAdmin, onEdit, onDelete }) {
                       }}
                     />
                     {img.caption && (
-                      <figcaption style={{ fontSize: '0.82rem', color: '#64748b', marginTop: '0.4rem', fontWeight: 500 }}>
+                      <figcaption style={{ fontSize: '0.82rem', color: 'var(--ink-soft)', marginTop: '0.4rem', fontWeight: 500 }}>
                         {img.caption}
                       </figcaption>
                     )}
@@ -271,34 +265,17 @@ function ConfirmModal({ isOpen, title, message, onConfirm, onCancel }) {
   if (!isOpen) return null
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        backgroundColor: 'rgba(15, 23, 42, 0.65)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 10000,
-        padding: '1rem',
-      }}
-    >
+    <div className="admin-modal-overlay" onClick={onCancel}>
       <div
-        style={{
-          background: '#fff',
-          borderRadius: '12px',
-          width: '100%',
-          maxWidth: '400px',
-          padding: '1.5rem',
-          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.15)',
-          textAlign: 'center',
-        }}
+        className="admin-modal-card modal-sm"
+        style={{ textAlign: 'center' }}
+        onClick={(e) => e.stopPropagation()}
       >
         <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🗑️</div>
-        <h4 style={{ margin: '0 0 0.5rem 0', color: '#0f172a', fontSize: '1.1rem' }}>
+        <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--ink)', fontSize: '1.1rem' }}>
           {title || 'Konfirmasi Hapus'}
         </h4>
-        <p style={{ color: '#64748b', fontSize: '0.9rem', margin: '0 0 1.5rem 0', lineHeight: 1.5 }}>
+        <p style={{ color: 'var(--ink-soft)', fontSize: '0.9rem', margin: '0 0 1.5rem 0', lineHeight: 1.5 }}>
           {message || 'Data yang dihapus tidak bisa dikembalikan.'}
         </p>
         <div style={{ display: 'flex', gap: '0.6rem', justifyContent: 'center' }}>
@@ -312,8 +289,8 @@ function ConfirmModal({ isOpen, title, message, onConfirm, onCancel }) {
           </button>
           <button
             type="button"
-            className="btn-sm btn-danger"
-            style={{ minWidth: '80px', padding: '0.45rem 1rem' }}
+            className="btn-sm"
+            style={{ minWidth: '80px', padding: '0.45rem 1rem', background: 'var(--loss)', color: '#fff', border: 'none' }}
             onClick={onConfirm}
           >
             Ya, Hapus
@@ -332,11 +309,9 @@ export default function Journal({ isAdmin = false }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  // State Modal Form & Modal Konfirmasi Hapus
   const [formEditingRow, setFormEditingRow] = useState(null)
   const [deletingId, setDeletingId] = useState(null)
 
-  // Fetch data dari tabel Supabase
   async function fetchJournalEntries() {
     setLoading(true)
     setError(null)
@@ -359,7 +334,6 @@ export default function Journal({ isAdmin = false }) {
     fetchJournalEntries()
   }, [])
 
-  // Eksekusi hapus setelah dikonfirmasi via ConfirmModal
   async function executeDelete() {
     if (!deletingId) return
     try {
@@ -381,7 +355,6 @@ export default function Journal({ isAdmin = false }) {
     fetchJournalEntries()
   }
 
-  // Ekstrak dan rapikan kuartal unik
   const rawQuarters = [
     ...new Set(
       journalData
@@ -395,7 +368,6 @@ export default function Journal({ isAdmin = false }) {
     ),
   ]
 
-  // Urutkan dari tahun terbaru dan kuartal tertinggi (Q4 -> Q1)
   rawQuarters.sort((a, b) => {
     const [qA, yearA] = a.split(' ')
     const [qB, yearB] = b.split(' ')
@@ -407,7 +379,6 @@ export default function Journal({ isAdmin = false }) {
 
   const quarters = ['Semua', ...rawQuarters]
 
-  // Logika Filter & Search Bar
   const filteredData = journalData.filter((item) => {
     if (!item) return false
 
@@ -433,7 +404,6 @@ export default function Journal({ isAdmin = false }) {
 
   return (
     <div className="journal-page" style={{ marginTop: '1.5rem' }}>
-      {/* Modal Konfirmasi Hapus */}
       <ConfirmModal
         isOpen={deletingId !== null}
         title="Hapus Catatan Jurnal?"
@@ -442,7 +412,6 @@ export default function Journal({ isAdmin = false }) {
         onCancel={() => setDeletingId(null)}
       />
 
-      {/* Modal Form Tambah / Edit */}
       {formEditingRow !== null && (
         <JournalForm
           editingRow={Object.keys(formEditingRow).length > 0 ? formEditingRow : null}
@@ -451,7 +420,7 @@ export default function Journal({ isAdmin = false }) {
         />
       )}
 
-      {/* Header Bar: Search, Filter, & Tombol Tambah (Admin) */}
+      {/* Header Bar: Search, Filter, & Tombol Tambah */}
       <div
         style={{
           display: 'flex',
@@ -462,7 +431,6 @@ export default function Journal({ isAdmin = false }) {
           marginBottom: '1.5rem',
         }}
       >
-        {/* Search Bar */}
         <div style={{ flex: '1', minWidth: '220px', maxWidth: '360px', position: 'relative' }}>
           <input
             type="text"
@@ -473,10 +441,8 @@ export default function Journal({ isAdmin = false }) {
               width: '100%',
               padding: '0.55rem 0.9rem 0.55rem 2.2rem',
               borderRadius: '6px',
-              border: '1px solid #cbd5e1',
               fontSize: '0.88rem',
               outline: 'none',
-              background: '#fff',
             }}
           />
           <span
@@ -485,7 +451,7 @@ export default function Journal({ isAdmin = false }) {
               left: '0.75rem',
               top: '50%',
               transform: 'translateY(-50%)',
-              color: '#94a3b8',
+              color: 'var(--ink-soft)',
               fontSize: '0.9rem',
               pointerEvents: 'none',
             }}
@@ -502,7 +468,7 @@ export default function Journal({ isAdmin = false }) {
                 transform: 'translateY(-50%)',
                 background: 'transparent',
                 border: 'none',
-                color: '#94a3b8',
+                color: 'var(--ink-soft)',
                 cursor: 'pointer',
                 fontSize: '0.8rem',
               }}
@@ -512,7 +478,6 @@ export default function Journal({ isAdmin = false }) {
           )}
         </div>
 
-        {/* Filter Kuartal & Tombol Tambah */}
         <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
             {quarters.map((q) => (
@@ -538,22 +503,20 @@ export default function Journal({ isAdmin = false }) {
         </div>
       </div>
 
-      {/* State Loading & Error */}
-      {loading && <p style={{ textAlign: 'center', color: '#64748b' }}>Memuat catatan jurnal...</p>}
-      {error && <p style={{ textAlign: 'center', color: '#ef4444' }}>Gagal memuat: {error}</p>}
+      {loading && <p style={{ textAlign: 'center', color: 'var(--ink-soft)' }}>Memuat catatan jurnal...</p>}
+      {error && <p style={{ textAlign: 'center', color: 'var(--loss)' }}>Gagal memuat: {error}</p>}
 
-      {/* Daftar Jurnal */}
       {!loading && !error && filteredData.length === 0 && (
         <div
           style={{
             textAlign: 'center',
             padding: '3rem 1rem',
-            background: '#fff',
+            background: 'var(--card-bg)',
             borderRadius: '10px',
-            border: '1px dashed #cbd5e1',
+            border: '1px dashed var(--line)',
           }}
         >
-          <p style={{ color: '#64748b', margin: 0, fontSize: '0.95rem' }}>
+          <p style={{ color: 'var(--ink-soft)', margin: 0, fontSize: '0.95rem' }}>
             Belum ada catatan riset jurnal.
           </p>
         </div>

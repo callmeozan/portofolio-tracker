@@ -14,6 +14,22 @@ import Journal from './Journal'
 
 // const FOUNDED_DATE = '2024-10-08'
 
+function TableSkeleton({ rows = 3, cols = 8 }) {
+  return (
+    <tbody>
+      {Array.from({ length: rows }).map((_, r) => (
+        <tr key={r}>
+          {Array.from({ length: cols }).map((_, c) => (
+            <td key={c} className={c > 0 ? 'right' : ''}>
+              <span className="skeleton skeleton-text" style={{ width: c === 0 ? '60px' : '45px' }}></span>
+            </td>
+          ))}
+        </tr>
+      ))}
+    </tbody>
+  )
+}
+
 export default function Portfolio() {
   // ---------- member gate ----------
   const [isMember, setIsMember] = useState(false)
@@ -47,6 +63,19 @@ export default function Portfolio() {
   // { table, row } -- row null berarti form "tambah baru"
   const [formTarget, setFormTarget] = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
+
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem('theme') || 'light'
+  })
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme)
+    localStorage.setItem('theme', theme)
+  }, [theme])
+
+  function toggleTheme() {
+    setTheme((prev) => (prev === 'light' ? 'dark' : 'light'))
+  }
 
   useEffect(() => {
     checkMemberSession().then((member) => {
@@ -191,34 +220,17 @@ function ConfirmModal({ isOpen, title, message, onConfirm, onCancel }) {
   if (!isOpen) return null
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        backgroundColor: 'rgba(15, 23, 42, 0.65)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 10000,
-        padding: '1rem',
-      }}
-    >
-      <div
-        style={{
-          background: '#fff',
-          borderRadius: '12px',
-          width: '100%',
-          maxWidth: '400px',
-          padding: '1.5rem',
-          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.15)',
-          textAlign: 'center',
-        }}
+    <div className="admin-modal-overlay" onClick={onCancel}>
+      <div 
+        className="admin-modal-card modal-sm" 
+        onClick={(e) => e.stopPropagation()}
+        style={{ textAlign: 'center' }}
       >
         <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🗑️</div>
-        <h4 style={{ margin: '0 0 0.5rem 0', color: '#0f172a', fontSize: '1.1rem' }}>
+        <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--ink)', fontSize: '1.1rem' }}>
           {title || 'Konfirmasi Hapus'}
         </h4>
-        <p style={{ color: '#64748b', fontSize: '0.9rem', margin: '0 0 1.5rem 0', lineHeight: 1.5 }}>
+        <p style={{ color: 'var(--ink-soft)', fontSize: '0.9rem', margin: '0 0 1.5rem 0', lineHeight: 1.5 }}>
           {message || 'Data yang dihapus tidak bisa dikembalikan.'}
         </p>
         <div style={{ display: 'flex', gap: '0.6rem', justifyContent: 'center' }}>
@@ -232,8 +244,14 @@ function ConfirmModal({ isOpen, title, message, onConfirm, onCancel }) {
           </button>
           <button
             type="button"
-            className="btn-sm btn-danger"
-            style={{ minWidth: '80px', padding: '0.45rem 1rem' }}
+            className="btn-sm"
+            style={{ 
+              minWidth: '80px', 
+              padding: '0.45rem 1rem',
+              background: 'var(--loss)', 
+              color: '#fff', 
+              border: 'none' 
+            }}
             onClick={onConfirm}
           >
             Ya, Hapus
@@ -257,13 +275,9 @@ function ConfirmModal({ isOpen, title, message, onConfirm, onCancel }) {
         <div className="gate-overlay">
           <div className="gate-card">
             <div className="icon">🔒</div>
-            <h2>Khusus Member SDN</h2>
+            <h2>Khusus Faozan</h2>
             <p>
-              Portofolio Palsu ini eksklusif buat member Tier&nbsp;🌳&nbsp;Teman&nbsp;Bertumbuh Saham Dari Nol.
-              Cek password di{' '}
-              <a href="https://www.youtube.com/@SahamdariNol/membership" target="_blank" rel="noopener noreferrer">YouTube</a>
-              {' '}atau di{' '}
-              <a href="https://sahamdarinol.com/teman-berdiskusi/join-discord-saham-dari-nol" target="_blank" rel="noopener noreferrer">Discord</a>.
+              Portofolio Palsu ini eksklusif untuk Faozan dan hanya orang yang diberi akses khusus untuk melihat Portfolio Palsu ini.
             </p>
             <form onSubmit={handleMemberLogin}>
               <input
@@ -279,9 +293,7 @@ function ConfirmModal({ isOpen, title, message, onConfirm, onCancel }) {
               </button>
             </form>
             <div className="gate-hint">
-              Belum jadi member?{' '}
-              <a href="https://www.youtube.com/@SahamdariNol/membership" target="_blank" rel="noopener noreferrer">Gabung ke sini</a>
-              {' '}mulai Rp20.000/bulan di YouTube Saham Dari Nol buat akses penuh.
+              Mau tahu passwordnya? Tanya Faozan langsung. Jangan share ke orang lain.
             </div>
           </div>
         </div>
@@ -313,7 +325,14 @@ function ConfirmModal({ isOpen, title, message, onConfirm, onCancel }) {
 
       <header className="masthead">
         <div className="brand">
-          <div className="logo"><img src="/favicon-180.png" alt="SDN" style={{ width: '100%', height: '100%', objectFit: 'contain' }} /></div>
+          {/* <div className="logo"><img src="/favicon-180.png" alt="SDN" style={{ width: '100%', height: '100%', objectFit: 'contain' }} /></div> */}
+          <div className="logo">
+            <img 
+              src={theme === 'dark' ? '/logo-dark.png' : '/favicon-180.png'} 
+              alt="SDN" 
+              style={{ width: '100%', height: '100%', objectFit: 'contain' }} 
+            />
+          </div>
           <div className="brand-text">
             <div className="eyebrow">Saham Dari Nol</div>
             <h1>Portofolio Palsu</h1>
@@ -339,6 +358,17 @@ function ConfirmModal({ isOpen, title, message, onConfirm, onCancel }) {
         </div>
 
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          {/* Tombol Dark Mode gabung di sini */}
+          <button 
+            type="button" 
+            className="btn-ghost btn-sm" 
+            onClick={toggleTheme}
+            title="Ganti Mode Gelap/Terang"
+            style={{ fontSize: '0.95rem', padding: '0.35rem 0.55rem' }}
+          >
+            {theme === 'light' ? '🌙' : '☀️'}
+          </button>
+
           {isAdmin && (
             <button className="btn-link" onClick={() => setShowMemberPasswordForm((s) => !s)}>Ganti Password Member</button>
           )}
@@ -416,38 +446,60 @@ function ConfirmModal({ isOpen, title, message, onConfirm, onCancel }) {
             <AdminRowForm table="portfolio_settings" editingRow={formTarget.row} onDone={closeForm} onCancel={() => setFormTarget(null)} />
           )}
 
+          {/* ============ 0. SUMMARY ============ */}
           <div className="summary-row">
             <div className="summary-cell">
               <span className="label">Total Invested</span>
-              <span className="value num">{formatRp(totals.totalInvested)}</span>
+              <span className="value num">
+                {loading ? <span className="skeleton skeleton-text" style={{ width: '90px' }} /> : formatRp(totals.totalInvested)}
+              </span>
             </div>
+
             <div className="summary-cell">
               <span className="label">Nilai Pasar</span>
-              <span className="value num">{formatRp(totals.totalMarket)}</span>
+              <span className="value num">
+                {loading ? <span className="skeleton skeleton-text" style={{ width: '90px' }} /> : formatRp(totals.totalMarket)}
+              </span>
             </div>
+
             <div className="summary-cell">
               <span className="label">Floating P/L</span>
               <span className="value num">
-                <span className={totals.floating >= 0 ? 'gain' : 'loss'}>{formatRp(totals.floating)}</span>{' '}
-                <span className={`pct-inline ${totals.floating >= 0 ? 'gain' : 'loss'}`}>({formatPct(totals.floatingPct)})</span>
+                {loading ? (
+                  <span className="skeleton skeleton-text" style={{ width: '110px' }} />
+                ) : (
+                  <>
+                    <span className={totals.floating >= 0 ? 'gain' : 'loss'}>{formatRp(totals.floating)}</span>{' '}
+                    <span className={`pct-inline ${totals.floating >= 0 ? 'gain' : 'loss'}`}>({formatPct(totals.floatingPct)})</span>
+                  </>
+                )}
               </span>
             </div>
+
             <div className="summary-cell">
               <span className="label">Akumulasi Dividen</span>
-              <span className="value num gain">{formatRp(totals.totalDividen)}</span>
+              <span className="value num gain">
+                {loading ? <span className="skeleton skeleton-text" style={{ width: '80px' }} /> : formatRp(totals.totalDividen)}
+              </span>
             </div>
+
             <div className="summary-cell">
               <span className="label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 Sisa Cash
-                {isAdmin && (
+                {isAdmin && !loading && (
                   <button className="btn-link" style={{ fontSize: '0.68rem' }} onClick={() => setFormTarget({ table: 'portfolio_settings', row: settings })}>Edit</button>
                 )}
               </span>
-              <span className="value num">{formatRp(settings.sisa_cash)}</span>
+              <span className="value num">
+                {loading ? <span className="skeleton skeleton-text" style={{ width: '80px' }} /> : formatRp(settings.sisa_cash)}
+              </span>
             </div>
+
             <div className="summary-cell">
               <span className="label">Total Portofolio</span>
-              <span className="value num">{formatRp(totals.totalMarket + Number(settings.sisa_cash ?? 0))}</span>
+              <span className="value num">
+                {loading ? <span className="skeleton skeleton-text" style={{ width: '90px' }} /> : formatRp(totals.totalMarket + Number(settings.sisa_cash ?? 0))}
+              </span>
             </div>
           </div>
 
@@ -468,32 +520,50 @@ function ConfirmModal({ isOpen, title, message, onConfirm, onCancel }) {
             )}
 
             <div className="table-card">
-              {holdings.length === 0 && !loading ? (
-                <p className="empty">Belum ada posisi aktif.</p>
-              ) : (
-                <table>
-                  <thead>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Kode</th>
+                    <th className="right">Lot</th>
+                    <th className="right">Avg Beli</th>
+                    <th className="right">Harga Beli</th>
+                    <th className="right">Harga Kini</th>
+                    <th className="right">Nilai Pasar</th>
+                    <th className="right">Floating (Rp)</th>
+                    <th className="right">Floating (%)</th>
+                    <th className="right">Alokasi</th>
+                    <th className="right">Akum. Dividen</th>
+                    {isAdmin && <th></th>}
+                  </tr>
+                </thead>
+
+                {/* 1. Kondisi saat masih loading data */}
+                {loading ? (
+                  <TableSkeleton rows={3} cols={isAdmin ? 11 : 10} />
+                ) : holdings.length === 0 ? (
+                  /* 2. Kondisi jika data sudah selesai diload tapi kosong */
+                  <tbody>
                     <tr>
-                      <th>Kode</th>
-                      <th className="right">Lot</th>
-                      <th className="right">Avg Beli</th>
-                      <th className="right">Harga Beli</th>
-                      <th className="right">Harga Kini</th>
-                      <th className="right">Nilai Pasar</th>
-                      <th className="right">Floating (Rp)</th>
-                      <th className="right">Floating (%)</th>
-                      <th className="right">Alokasi</th>
-                      <th className="right">Akum. Dividen</th>
-                      {isAdmin && <th></th>}
+                      <td colSpan={isAdmin ? 11 : 10} className="empty">
+                        Belum ada posisi aktif.
+                      </td>
                     </tr>
-                  </thead>
+                  </tbody>
+                ) : (
+                  /* 3. Kondisi jika data ada */
                   <tbody>
                     {holdings.map((h) => {
                       const m = holdingMetrics(h, divByKode[h.kode_saham] ?? 0)
                       const alloc = allocationPct(h, totals.totalMarket)
                       return (
                         <tr key={h.id}>
-                          <td className="kode kode-row" data-label=""><span className="ticker-cell"><TickerBadge kode={h.kode_saham} />{h.kode_saham}{h.syariah && <span className="tag">syariah</span>}</span></td>
+                          <td className="kode kode-row" data-label="">
+                            <span className="ticker-cell">
+                              <TickerBadge kode={h.kode_saham} />
+                              {h.kode_saham}
+                              {h.syariah && <span className="tag">syariah</span>}
+                            </span>
+                          </td>
                           <td data-label="Lot" className="right num">{h.jumlah_lot}</td>
                           <td data-label="Avg Beli" className="right num">{formatRp(h.harga_beli_rata)}</td>
                           <td data-label="Harga Beli" className="right num">{formatRp(h.total_harga_beli)}</td>
@@ -506,7 +576,6 @@ function ConfirmModal({ isOpen, title, message, onConfirm, onCancel }) {
                           {isAdmin && (
                             <td className="row-actions row-actions-cell" data-label="">
                               <button className="btn-link" onClick={() => setFormTarget({ table: 'holdings', row: h })}>Edit</button>
-                              {/* <button className="btn-danger" onClick={() => handleDelete('holdings', h.id)}>Hapus</button> */}
                               <button className="btn-danger" onClick={() => setDeleteTarget({ table: 'holdings', id: h.id })}>Hapus</button>
                             </td>
                           )}
@@ -514,8 +583,8 @@ function ConfirmModal({ isOpen, title, message, onConfirm, onCancel }) {
                       )
                     })}
                   </tbody>
-                </table>
-              )}
+                )}
+              </table>
             </div>
           </section>
 
@@ -535,7 +604,21 @@ function ConfirmModal({ isOpen, title, message, onConfirm, onCancel }) {
               <AdminRowForm table="closed_positions" editingRow={formTarget.row} onDone={closeForm} onCancel={() => setFormTarget(null)} />
             )}
 
-            {closed.length === 0 && !loading ? (
+            {loading ? (
+              <div className="table-card">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Kode</th><th>Beli</th><th>Jual</th>
+                      <th className="right">Lot</th><th className="right">Nilai Beli</th>
+                      <th className="right">Nilai Jual</th><th className="right">∆</th><th>Ket.</th>
+                      {isAdmin && <th></th>}
+                    </tr>
+                  </thead>
+                  <TableSkeleton rows={3} cols={isAdmin ? 9 : 8} />
+                </table>
+              </div>
+            ) : closed.length === 0 ? (
               <div className="table-card"><p className="empty">Belum ada riwayat penjualan.</p></div>
             ) : (
               Object.entries(
@@ -582,7 +665,6 @@ function ConfirmModal({ isOpen, title, message, onConfirm, onCancel }) {
                                     {isAdmin && (
                                       <td className="row-actions row-actions-cell" data-label="">
                                         <button className="btn-link" onClick={() => setFormTarget({ table: 'closed_positions', row: c })}>Edit</button>
-                                        {/* <button className="btn-danger" onClick={() => handleDelete('closed_positions', c.id)}>Hapus</button> */}
                                         <button className="btn-danger" onClick={() => setDeleteTarget({ table: 'closed_positions', id: c.id })}>Hapus</button>
                                       </td>
                                     )}
@@ -616,17 +698,29 @@ function ConfirmModal({ isOpen, title, message, onConfirm, onCancel }) {
             )}
 
             <div className="table-card">
-              {dividends.length === 0 && !loading ? (
-                <p className="empty">Belum ada riwayat dividen.</p>
-              ) : (
-                <table>
-                  <thead>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Tanggal</th><th>Kode</th><th className="right">Lot</th>
+                    <th className="right">Div/Saham</th><th className="right">Yield</th><th className="right">Total Dividen</th>
+                    {isAdmin && <th></th>}
+                  </tr>
+                </thead>
+
+                {/* 1. Kondisi Loading */}
+                {loading ? (
+                  <TableSkeleton rows={3} cols={isAdmin ? 7 : 6} />
+                ) : dividends.length === 0 ? (
+                  /* 2. Kondisi Data Kosong */
+                  <tbody>
                     <tr>
-                      <th>Tanggal</th><th>Kode</th><th className="right">Lot</th>
-                      <th className="right">Div/Saham</th><th className="right">Yield</th><th className="right">Total Dividen</th>
-                      {isAdmin && <th></th>}
+                      <td colSpan={isAdmin ? 7 : 6} className="empty">
+                        Belum ada riwayat dividen.
+                      </td>
                     </tr>
-                  </thead>
+                  </tbody>
+                ) : (
+                  /* 3. Render Data Dividen */
                   <tbody>
                     {dividends.map((d) => {
                       const m = dividendMetrics(d)
@@ -641,7 +735,6 @@ function ConfirmModal({ isOpen, title, message, onConfirm, onCancel }) {
                           {isAdmin && (
                             <td className="row-actions row-actions-cell" data-label="">
                               <button className="btn-link" onClick={() => setFormTarget({ table: 'dividends', row: d })}>Edit</button>
-                              {/* <button className="btn-danger" onClick={() => handleDelete('dividends', d.id)}>Hapus</button> */}
                               <button className="btn-danger" onClick={() => setDeleteTarget({ table: 'dividends', id: d.id })}>Hapus</button>
                             </td>
                           )}
@@ -649,8 +742,8 @@ function ConfirmModal({ isOpen, title, message, onConfirm, onCancel }) {
                       )
                     })}
                   </tbody>
-                </table>
-              )}
+                )}
+              </table>
             </div>
           </section>
         </>
@@ -661,8 +754,8 @@ function ConfirmModal({ isOpen, title, message, onConfirm, onCancel }) {
       )}
 
       <footer className="pp-footer">
-        <span>Portofolio Palsu — konten edukasi Saham Dari Nol. Bukan rekomendasi beli/jual.</span>
-        <span>Data hanya bisa diubah oleh admin.</span>
+        <span>Portofolio Palsu — dibentuk untuk tujuan edukasi. Bukan rekomendasi beli/jual.</span>
+        <span>Data hanya bisa diubah oleh Faozan.</span>
       </footer>
     </div>
   )
