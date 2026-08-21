@@ -372,7 +372,7 @@ function ConfirmModal({ isOpen, title, message, onConfirm, onCancel }) {
           </button>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
           {/* Tombol Dark Mode gabung di sini */}
           <button 
             type="button" 

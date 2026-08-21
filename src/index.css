@@ -43,7 +43,16 @@
    2. BASE & TYPOGRAPHY
    ============================================================ */
 * { box-sizing: border-box; }
-html, body, #root { margin: 0; min-height: 100vh; background: var(--bg); color: var(--ink); }
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;
+  margin: 0;
+  padding: 0;
+}
+#root, .app-container, .journal-page {
+  max-width: 100%;
+  overflow-x: hidden;
+}
 body { font-family: 'Inter', system-ui, -apple-system, sans-serif; font-size: 15px; line-height: 1.5; }
 .num { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; white-space: nowrap; }
 button { font-family: inherit; cursor: pointer; }

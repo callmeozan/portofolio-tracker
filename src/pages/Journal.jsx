@@ -30,19 +30,21 @@ function JournalCard({ item, isAdmin, onEdit, onDelete }) {
         style={{
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'center',
+          alignItems: 'flex-start',
+          gap: '0.75rem',
           cursor: 'pointer',
           userSelect: 'none',
+          flexWrap: 'wrap', // tambahkan ini
         }}
         onClick={() => setIsOpen((prev) => !prev)}
       >
-        <div style={{ display: 'flex', gap: '0.85rem', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flex: '1 1 200px', minWidth: 0 }}>
           {/* Ikon Panah */}
           <span style={{ fontSize: '0.85rem', color: 'var(--ink-soft)', fontWeight: 'bold' }}>
             {isOpen ? '▼' : '▶'}
           </span>
 
-          {/* Logo Emiten Proporsional */}
+          {/* Logo Emiten */}
           <div
             className="journal-ticker-logo"
             style={{
@@ -63,13 +65,13 @@ function JournalCard({ item, isAdmin, onEdit, onDelete }) {
             <TickerBadge kode={item.kode_saham} size={34} />
           </div>
 
-          {/* Nama PT (Atas) & Kode Emiten + Kuartal (Bawah) */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-            <strong style={{ fontSize: '1rem', color: 'var(--ink)', lineHeight: '1.2' }}>
+          {/* Info Teks */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', minWidth: 0, flex: 1 }}>
+            <strong style={{ fontSize: '0.95rem', color: 'var(--ink)', lineHeight: '1.3', wordBreak: 'break-word' }}>
               {item.nama_perusahaan}
             </strong>
             
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
               <span
                 style={{
                   fontFamily: 'JetBrains Mono, monospace',
@@ -96,11 +98,12 @@ function JournalCard({ item, isAdmin, onEdit, onDelete }) {
           </div>
         </div>
 
+        {/* Tanggal & Tombol Edit/Hapus */}
         <div
-          style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}
+          style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexShrink: 0 }}
           onClick={(e) => e.stopPropagation()}
         >
-          <span style={{ fontSize: '0.85rem', color: 'var(--ink-soft)' }}>{item.tanggal_update}</span>
+          <span style={{ fontSize: '0.8rem', color: 'var(--ink-soft)' }}>{item.tanggal_update}</span>
           {isAdmin && (
             <div style={{ display: 'flex', gap: '0.4rem' }}>
               <button className="btn-sm btn-ghost" onClick={() => onEdit?.(item)}>Edit</button>
