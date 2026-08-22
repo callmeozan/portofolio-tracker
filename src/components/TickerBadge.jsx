@@ -11,16 +11,10 @@ function colorFor(kode) {
   return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length]
 }
 
-// Urutan pencarian logo:
-// 1. CDN Stockbit Logo (otomatis untuk hampir semua saham IHSG)
-// 2. Google Favicon dari domain resmi perusahaan (jika ada di tickerDomains)
-// 3. Inisial teks abjad (fallback terakhir)
 export default function TickerBadge({ kode }) {
   const cleanKode = kode?.toUpperCase() || ''
-  const domain = TICKER_DOMAINS[cleanKode]
-  
-  // Default langsung mulai dari 'cdn' agar tidak memicu 404 lokal di console
-  const [stage, setStage] = useState('cdn')
+  const domain = TICKER_DOMAINS?.[cleanKode]
+  const [stage, setStage] = useState('tv') // Mulai dari CDN TradingView / GoStock
 
   if (stage === 'fallback' || !cleanKode) {
     return (
@@ -30,15 +24,15 @@ export default function TickerBadge({ kode }) {
     )
   }
 
-  // Tentukan URL gambar berdasarkan stage saat ini
-  let src = `https://assets.stockbit.com/logos/companies/${cleanKode}.png`
+  // 1. CDN TradingView (Sangat lengkap untuk saham IDX)
+  // 2. Google Favicon via domain resmi
+  let src = `https://s3-symbol-logo.tradingview.com/idx--${cleanKode.toLowerCase()}.svg`
   if (stage === 'domain') {
     src = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`
   }
 
-  // Handler transisi jika logo gagal dimuat
   const handleError = () => {
-    if (stage === 'cdn') {
+    if (stage === 'tv') {
       setStage(domain ? 'domain' : 'fallback')
     } else {
       setStage('fallback')
