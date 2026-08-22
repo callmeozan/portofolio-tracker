@@ -23,7 +23,6 @@ export const FIELD_CONFIG = {
     { name: 'dividen_per_saham', label: 'Div/Saham (Rp)', type: 'number' },
   ],
   portfolio_settings: [
-    { name: 'announcement', label: 'Pengumuman', type: 'textarea' },
     { name: 'sisa_cash', label: 'Sisa Cash', type: 'number' },
     { name: 'founded_date', label: 'Tanggal Mulai Portofolio', type: 'date' },
   ],

@@ -43,7 +43,7 @@ export default function Portfolio() {
   const [holdings, setHoldings] = useState([])
   const [closed, setClosed] = useState([])
   const [dividends, setDividends] = useState([])
-  const [settings, setSettings] = useState({ id: 1, sisa_cash: 0, announcement: null, founded_date: '2024-10-08' })
+  const [settings, setSettings] = useState({ id: 1, sisa_cash: 0, founded_date: '2024-10-08' })
   const [picked, setPicked] = useState(() => {
     try { return new Set(JSON.parse(localStorage.getItem('pp_reacted') || '[]')) } catch { return new Set() }
   })
@@ -151,37 +151,6 @@ export default function Portfolio() {
     if (isAdmin) { await adminLogout(); setIsAdmin(false) }
     setIsMember(false)
     setHoldings([]); setClosed([]); setDividends([])
-  }
-
-  async function handleReact(emoji) {
-    const alreadyPicked = picked.has(emoji)
-    const delta = alreadyPicked ? -1 : 1
-
-    const nextPicked = new Set(picked)
-    if (alreadyPicked) nextPicked.delete(emoji)
-    else nextPicked.add(emoji)
-    setPicked(nextPicked)
-    localStorage.setItem('pp_reacted', JSON.stringify([...nextPicked]))
-
-    const { error } = await supabase.rpc('increment_reaction', { emoji_key: emoji, delta })
-    if (error) {
-      const rollback = new Set(nextPicked)
-      if (alreadyPicked) rollback.add(emoji)
-      else rollback.delete(emoji)
-      setPicked(rollback)
-      localStorage.setItem('pp_reacted', JSON.stringify([...rollback]))
-    }
-  }
-
-  function linkify(text) {
-    const parts = text.split(/(https?:\/\/[^\s]+)/g)
-    return parts.map((part, i) =>
-      /^https?:\/\//.test(part) ? (
-        <a key={i} href={part} target="_blank" rel="noopener noreferrer">{part}</a>
-      ) : (
-        part
-      )
-    )
   }
 
   function toggleYear(year) {
@@ -436,26 +405,6 @@ function ConfirmModal({ isOpen, title, message, onConfirm, onCancel }) {
         <>
         {activeTab === 'summary' ? (
           <>
-          {settings.announcement ? (
-            <div className="announcement">
-              <span className="icon">📢</span>
-              <div className="body">
-                {linkify(settings.announcement)}
-                {settings.announcement_updated_at && (
-                  <div className="meta">Diupdate {formatDate(settings.announcement_updated_at.slice(0, 10))}</div>
-                )}
-              </div>
-              {isAdmin && (
-                <button
-                  className="btn-link"
-                  style={{ position: 'absolute', top: '0.7rem', right: '0.8rem' }}
-                  onClick={() => setFormTarget({ table: 'portfolio_settings', row: settings })}
-                >
-                  Edit
-                </button>
-              )}
-            </div>
-          ) : null}
 
           {formTarget?.table === 'portfolio_settings' && (
             <AdminRowForm table="portfolio_settings" editingRow={formTarget.row} onDone={closeForm} onCancel={() => setFormTarget(null)} />

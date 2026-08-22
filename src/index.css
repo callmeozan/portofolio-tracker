@@ -14,10 +14,6 @@
   --gain: #0f9d58;
   --loss: #d93025;
   --accent: #14171a;
-  --announcement-bg: #fdfaf3;
-  --announcement-border: #f0dfa8;
-  --announcement-text: #8a6d00;
-  --announcement-meta: #a08d3f;
   color-scheme: light;
 }
 
@@ -32,10 +28,6 @@
   --gain: #22c55e;
   --loss: #ef4444;
   --accent: #f8fafc;
-  --announcement-bg: #1e251e;
-  --announcement-border: #385038;
-  --announcement-text: #86efac;
-  --announcement-meta: #4ade80;
   color-scheme: dark;
 }
 
@@ -161,46 +153,6 @@ header.masthead {
 }
 
 .pct-inline { font-size: 0.8em; font-weight: 600; }
-
-/* ============================================================
-   6. ANNOUNCEMENT & REACTIONS
-   ============================================================ */
-.announcement {
-  background: var(--announcement-bg);
-  border: 1px solid var(--announcement-border);
-  border-radius: 12px;
-  padding: 1rem 1.1rem;
-  margin-bottom: 1.5rem;
-  display: flex;
-  gap: 0.75rem;
-  align-items: flex-start;
-  position: relative;
-}
-.announcement .icon { font-size: 1.1rem; line-height: 1.4; }
-.announcement .body { flex: 1; font-size: 0.88rem; white-space: pre-wrap; }
-.announcement .body a { color: var(--announcement-text); text-decoration: underline; word-break: break-word; }
-.announcement .meta { font-size: 0.7rem; color: var(--announcement-meta); margin-top: 0.4rem; }
-.announcement-empty {
-  border: 1px dashed var(--line); border-radius: 12px; padding: 0.9rem 1.1rem;
-  margin-bottom: 1.5rem; font-size: 0.82rem; color: var(--ink-soft); text-align: center;
-}
-
-.reactions-row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1.75rem; }
-.reaction-btn {
-  display: flex; align-items: center; gap: 0.4rem; border: 1px solid var(--line);
-  background: var(--card-bg); border-radius: 999px; padding: 0.4rem 0.85rem; font-size: 0.85rem;
-  position: relative; transition: transform 0.1s ease, background 0.15s ease, border-color 0.15s ease;
-}
-.reaction-btn:hover { background: var(--surface-hover); }
-.reaction-btn:active { transform: scale(0.94); }
-.reaction-btn.picked { border-color: var(--gain); background: var(--surface); }
-.reaction-btn .count { font-family: 'JetBrains Mono', monospace; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
-.reaction-btn.picked .count { color: var(--gain); font-weight: 600; }
-@keyframes floatUp {
-  0% { opacity: 1; transform: translate(-50%, 0) scale(1); }
-  100% { opacity: 0; transform: translate(-50%, -28px) scale(1.4); }
-}
-.float-emoji { position: absolute; left: 50%; top: -4px; font-size: 1.1rem; animation: floatUp 0.6s ease-out forwards; pointer-events: none; }
 
 /* ============================================================
    7. LEDGER SECTIONS & TABLES

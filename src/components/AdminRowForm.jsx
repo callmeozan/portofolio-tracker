@@ -48,10 +48,6 @@ export default function AdminRowForm({ table, editingRow, onDone, onCancel }) {
       }
     }
 
-    if (table === 'portfolio_settings' && 'announcement' in payload) {
-      payload.announcement_updated_at = payload.announcement ? new Date().toISOString() : null
-    }
-
     if (table === 'holdings') {
       const lot = Number(payload.jumlah_lot) || 0
       const avgBeli = Number(payload.harga_beli_rata) || 0
@@ -132,7 +128,7 @@ export default function AdminRowForm({ table, editingRow, onDone, onCancel }) {
                     step={field.type === 'number' ? 'any' : undefined}
                     value={form[field.name] ?? ''}
                     onChange={(e) => setForm({ ...form, [field.name]: e.target.value })}
-                    required={field.name !== 'keterangan' && field.name !== 'harga_saat_ini' && field.name !== 'announcement'}
+                    required={field.name !== 'keterangan' && field.name !== 'harga_saat_ini'}
                   />
                 )}
               </label>
