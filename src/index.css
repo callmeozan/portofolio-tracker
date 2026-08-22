@@ -132,7 +132,6 @@ header.masthead {
 /* ============================================================
    5. GLOW & PROFIT/LOSS INDICATORS
    ============================================================ */
-/* Mode Terang (Glow Halus) */
 .gain {
   color: var(--gain);
   text-shadow: 0 0 6px rgba(15, 157, 88, 0.25);
@@ -143,9 +142,8 @@ header.masthead {
   text-shadow: 0 0 6px rgba(217, 48, 37, 0.25);
 }
 
-/* Mode Gelap (Multi-Layered Intense Glow) */
 [data-theme="dark"] .gain {
-  color: #4ade80 !important; /* Hijau neon terang */
+  color: #4ade80 !important;
   text-shadow: 
     0 0 4px rgba(74, 222, 128, 0.8),
     0 0 12px rgba(74, 222, 128, 0.5),
@@ -154,7 +152,7 @@ header.masthead {
 }
 
 [data-theme="dark"] .loss {
-  color: #ff5252 !important; /* Merah neon terang */
+  color: #ff5252 !important;
   text-shadow: 
     0 0 4px rgba(255, 82, 82, 0.8),
     0 0 12px rgba(255, 82, 82, 0.5),
@@ -220,7 +218,7 @@ section.ledger .note { font-size: 0.83rem; color: var(--ink-soft); margin: 0.2re
   border-radius: 12px; 
   overflow-x: auto; 
   overflow-y: hidden; 
-  background: var(--card-bg); /* Beri background langsung ke kontainer card */
+  background: var(--card-bg);
   width: 100%;
 }
 
@@ -241,7 +239,7 @@ tbody td {
   padding: 0.65rem 0.75rem; 
   border-bottom: 1px solid var(--line); 
   vertical-align: middle; 
-  background: transparent; /* Hilangkan background td agar tidak belang */
+  background: transparent;
 }
 tbody tr:last-child td { border-bottom: none; }
 tbody tr:hover { 
@@ -329,101 +327,187 @@ footer.pp-footer {
 }
 
 /* ============================================================
-   9. FORMS, MODALS & INPUTS (WITH DARK MODE SUPPORT)
+   9. FORMS, MODALS & INPUTS (PERFECTED & THEME ADAPTIVE)
    ============================================================ */
-input[type="text"],
-input[type="number"],
-input[type="password"],
-input[type="date"],
-textarea {
-  background-color: var(--card-bg);
-  color: var(--ink);
-  border: 1px solid var(--line);
-}
-
-[data-theme="dark"] input[type="text"],
-[data-theme="dark"] input[type="number"],
-[data-theme="dark"] input[type="password"],
-[data-theme="dark"] input[type="date"],
-[data-theme="dark"] textarea,
-[data-theme="dark"] .admin-field input,
-[data-theme="dark"] .admin-field textarea,
-[data-theme="dark"] .gate-card input,
-[data-theme="dark"] .lock-popover input {
-  background-color: var(--surface) !important;
-  color: var(--ink) !important;
-  border: 1px solid var(--line) !important;
-}
-
-[data-theme="dark"] input::placeholder,
-[data-theme="dark"] textarea::placeholder {
-  color: var(--ink-soft);
-}
-
-/* Modal Popup */
 .admin-modal-overlay {
-  position: fixed; inset: 0; z-index: 1000;
-  background: rgba(0, 0, 0, 0.55);
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
   backdrop-filter: blur(4px);
-  display: flex; align-items: center; justify-content: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
   padding: 1rem;
 }
 
 .admin-modal-card {
-  background: var(--card-bg);
-  border-radius: 14px;
-  max-width: 520px;
+  background: var(--bg) !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.3) !important;
+  color: var(--ink) !important;
+  padding: 1.5rem !important;
   width: 100%;
-  padding: 1.5rem;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
-  border: 1px solid var(--line);
-  animation: modalPop 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  max-height: 90vh;
-  overflow-y: auto;
+  max-width: 520px; /* Batasi lebar maksimal agar tidak melar se-layar */
 }
-.modal-sm { max-width: 400px; }
 
-@keyframes modalPop {
-  0% { opacity: 0; transform: scale(0.96) translateY(8px); }
-  100% { opacity: 1; transform: scale(1) translateY(0); }
+.modal-sm { 
+  max-width: 420px; 
 }
 
 .admin-modal-head {
-  display: flex; justify-content: space-between; align-items: center;
-  margin-bottom: 1.25rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--line);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--line);
 }
-.admin-modal-head h3 { margin: 0; font-size: 1.05rem; font-weight: 700; color: var(--ink); }
-.admin-modal-close {
-  background: transparent; border: none; font-size: 1.4rem; line-height: 1;
-  color: var(--ink-soft); cursor: pointer; padding: 0 4px;
-}
-.admin-modal-close:hover { color: var(--ink); }
 
-.admin-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.6rem; }
-.admin-field { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.72rem; color: var(--ink-soft); }
-.admin-field input {
-  padding: 0.4rem 0.55rem; border: 1px solid var(--line); border-radius: 6px; font-size: 0.83rem;
-  font-family: 'JetBrains Mono', monospace;
+.admin-modal-head h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--ink) !important;
 }
+
+.admin-modal-close {
+  background: transparent;
+  border: none;
+  font-size: 1.3rem;
+  line-height: 1;
+  color: var(--ink-soft);
+  cursor: pointer;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.admin-modal-close:hover {
+  color: var(--ink);
+  background: var(--surface-hover);
+}
+
+/* Grid Presisi 2 Kolom untuk Modal Portfolio */
+.admin-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.85rem 1rem;
+  align-items: start;
+}
+
+.admin-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--ink) !important;
+}
+
+.admin-field input,
+.admin-field select,
+.admin-field textarea,
+.admin-modal-card input[type="text"],
+.admin-modal-card input[type="number"],
+.admin-modal-card input[type="date"],
+.admin-modal-card select,
+.admin-modal-card textarea {
+  background: var(--surface) !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 8px !important;
+  color: var(--ink) !important;
+  padding: 0.6rem 0.85rem !important;
+  font-size: 0.86rem !important;
+  font-family: 'JetBrains Mono', monospace !important;
+  outline: none !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  transition: all 0.2s ease !important;
+}
+
+.admin-field input:focus,
+.admin-field select:focus,
+.admin-field textarea:focus,
+.admin-modal-card input:focus,
+.admin-modal-card select:focus,
+.admin-modal-card textarea:focus {
+  border-color: #0284c7 !important;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.18) !important;
+}
+
 .admin-field textarea {
-  padding: 0.5rem 0.6rem; border: 1px solid var(--line); border-radius: 6px; font-size: 0.85rem;
-  font-family: 'Inter', sans-serif; resize: vertical;
+  font-family: 'Inter', sans-serif !important;
+  resize: vertical;
 }
-.admin-field:has(textarea) { grid-column: 1 / -1; }
-.admin-field.is-checkbox { flex-direction: row; align-items: center; gap: 0.5rem; }
+
+.admin-field:has(textarea),
+.admin-field.full-width {
+  grid-column: 1 / -1;
+}
+
+/* Inline Checkbox Syariah Rapi */
+.admin-field.is-checkbox {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1.8rem;
+  cursor: pointer;
+}
+
+.admin-field input[type="checkbox"] {
+  accent-color: #0284c7;
+  width: 18px !important;
+  height: 18px !important;
+  margin: 0 !important;
+  cursor: pointer;
+}
+
 .admin-form-actions {
-  display: flex; justify-content: flex-end; gap: 0.6rem;
-  margin-top: 1.25rem; padding-top: 0.9rem; border-top: 1px solid var(--line);
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
 }
+
 .admin-error { color: var(--loss); font-size: 0.78rem; margin: 0.5rem 0 0; }
 
-[data-theme="dark"] .admin-modal-card .btn-primary {
-  background: #334155;
-  color: #f8fafc;
-  border: 1px solid #475569;
+.admin-modal-card .btn-primary {
+  background: #0284c7 !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-radius: 8px !important;
+  padding: 0.6rem 1.3rem !important;
+  font-size: 0.86rem !important;
+  font-weight: 600 !important;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3) !important;
+  transition: all 0.15s ease !important;
 }
-[data-theme="dark"] .admin-modal-card .btn-primary:hover {
-  background: #475569;
+
+.admin-modal-card .btn-primary:hover {
+  background: #0369a1 !important;
+  transform: translateY(-1px);
+}
+
+.admin-modal-card .btn-ghost {
+  background: var(--surface) !important;
+  border: 1px solid var(--line) !important;
+  color: var(--ink-soft) !important;
+  border-radius: 8px !important;
+  padding: 0.6rem 1.1rem !important;
+  font-size: 0.86rem !important;
+  font-weight: 600 !important;
+  cursor: pointer;
+  transition: all 0.15s ease !important;
+}
+
+.admin-modal-card .btn-ghost:hover {
+  background: var(--surface-hover) !important;
+  color: var(--ink) !important;
 }
 
 /* Lock Popover */
@@ -529,7 +613,6 @@ textarea {
     font-size: 0.88rem;
   }
 
-  /* Buat tabel scrollable ke samping di mobile */
   .table-card {
     border-radius: 10px;
     -webkit-overflow-scrolling: touch;
@@ -596,7 +679,6 @@ textarea {
   letter-spacing: -0.02em;
 }
 
-/* Light mode styling */
 .badge-gain {
   background: rgba(34, 197, 94, 0.12);
   color: #15803d;
@@ -609,7 +691,6 @@ textarea {
   border: 1px solid rgba(239, 68, 68, 0.25);
 }
 
-/* Dark mode glowing text & borders */
 [data-theme="dark"] .badge-gain {
   color: #4ade80;
   background: rgba(34, 197, 94, 0.15);

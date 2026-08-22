@@ -1,6 +1,5 @@
 import React, { useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
-import { adminMutate } from '../lib/adminApi'
 
 export default function JournalForm({ editingRow, onDone, onCancel }) {
   const [submitting, setSubmitting] = useState(false)
@@ -15,12 +14,11 @@ export default function JournalForm({ editingRow, onDone, onCancel }) {
     editingRow?.tanggal_update || new Date().toISOString().slice(0, 10)
   )
 
-  // Metrik Valuasi
+  // Metrik Valuasi & Rasio Umum
   const [targetHarga, setTargetHarga] = useState(editingRow?.metrik?.target_harga || '')
   const [fairValue, setFairValue] = useState(editingRow?.metrik?.fair_value || '')
   const [mos, setMos] = useState(editingRow?.metrik?.mos || '')
   const [dividenYield, setDividenYield] = useState(editingRow?.metrik?.dividen_yield || '')
-
   const [revenueYoy, setRevenueYoy] = useState(editingRow?.metrik?.revenue_yoy || '')
   const [netProfitYoy, setNetProfitYoy] = useState(editingRow?.metrik?.net_profit_yoy || '')
   const [npm, setNpm] = useState(editingRow?.metrik?.npm || '')
@@ -29,19 +27,52 @@ export default function JournalForm({ editingRow, onDone, onCancel }) {
   const [per, setPer] = useState(editingRow?.metrik?.per || '')
   const [pbv, setPbv] = useState(editingRow?.metrik?.pbv || '')
 
-  // Referensi (Tautan Video / PDF / Berita)
-  const [referensi, setReferensi] = useState(
-    editingRow?.referensi || [{ tipe: 'video', label: '', url: '', sumber: '' }]
-  )
+  // Metrik Khusus Perbankan (Opsional)
+  const [casa, setCasa] = useState(editingRow?.metrik?.casa || '')
+  const [nim, setNim] = useState(editingRow?.metrik?.nim || '')
+  const [nplGross, setNplGross] = useState(editingRow?.metrik?.npl_gross || '')
 
-  // Blok Catatan Riset + Screenshot Lapkeu
+  // State Input Mentah Lapkeu untuk Auto-Calculate
+  const [rawLiabilitas, setRawLiabilitas] = useState('')
+  const [rawEkuitas, setRawEkuitas] = useState('')
+  const [rawLabaSekarang, setRawLabaSekarang] = useState('')
+  const [rawLabaLalu, setRawLabaLalu] = useState('')
+
+  // Referensi & Catatan Riset
+  const [referensi, setReferensi] = useState(
+    editingRow?.referensi || [{ tipe: 'dokumen', label: '', url: '', sumber: '' }]
+  )
   const [catatanRiset, setCatatanRiset] = useState(
     editingRow?.catatan_riset || [{ paragraf: '', gambar_lapkeu: [] }]
   )
 
-  // -------------------------------------------------------------
-  // Handler untuk Blok Narasi Riset Dinamis
-  // -------------------------------------------------------------
+  const autoCalculateRatios = (liab, eku, labaNow, labaPast, q) => {
+    const l = parseFloat(liab)
+    const e = parseFloat(eku)
+    const lp = parseFloat(labaNow)
+    const lpast = parseFloat(labaPast)
+
+    if (!isNaN(l) && !isNaN(e) && e !== 0) {
+      setDer((l / e).toFixed(2) + 'x')
+    }
+
+    if (!isNaN(lp) && !isNaN(e) && e !== 0) {
+      let multiplier = 1
+      if (q.includes('Q1')) multiplier = 4
+      else if (q.includes('Q2')) multiplier = 2
+      else if (q.includes('Q3')) multiplier = 4 / 3
+
+      const roeVal = ((lp * multiplier) / e) * 100
+      setRoe(roeVal.toFixed(2) + '%')
+    }
+
+    if (!isNaN(lp) && !isNaN(lpast) && lpast !== 0) {
+      const yoyVal = ((lp - lpast) / Math.abs(lpast)) * 100
+      const sign = yoyVal > 0 ? '+' : ''
+      setNetProfitYoy(`${sign}${yoyVal.toFixed(2)}%`)
+    }
+  }
+
   const handleAddBlok = () => {
     setCatatanRiset([...catatanRiset, { paragraf: '', gambar_lapkeu: [] }])
   }
@@ -56,9 +87,6 @@ export default function JournalForm({ editingRow, onDone, onCancel }) {
     setCatatanRiset(next)
   }
 
-  // -------------------------------------------------------------
-  // Upload Gambar Langsung ke Supabase Storage
-  // -------------------------------------------------------------
   const handleUploadImage = async (blokIndex, e) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -104,11 +132,8 @@ export default function JournalForm({ editingRow, onDone, onCancel }) {
     setCatatanRiset(next)
   }
 
-  // -------------------------------------------------------------
-  // Handler untuk Link Referensi
-  // -------------------------------------------------------------
   const handleAddRef = () => {
-    setReferensi([...referensi, { tipe: 'video', label: '', url: '', sumber: '' }])
+    setReferensi([...referensi, { tipe: 'dokumen', label: '', url: '', sumber: '' }])
   }
 
   const handleRefChange = (idx, field, value) => {
@@ -121,9 +146,6 @@ export default function JournalForm({ editingRow, onDone, onCancel }) {
     setReferensi(referensi.filter((_, i) => i !== idx))
   }
 
-  // -------------------------------------------------------------
-  // Simpan ke Supabase
-  // -------------------------------------------------------------
   const handleSubmit = async (e) => {
     e.preventDefault()
     setSubmitting(true)
@@ -149,6 +171,9 @@ export default function JournalForm({ editingRow, onDone, onCancel }) {
         der: der,
         per: per,
         pbv: pbv,
+        casa: casa,
+        nim: nim,
+        npl_gross: nplGross,
       },
       referensi: referensi.filter((r) => r.url.trim() !== ''),
       catatan_riset: catatanRiset.filter((c) => c.paragraf.trim() !== '' || c.gambar_lapkeu.length > 0),
@@ -178,281 +203,590 @@ export default function JournalForm({ editingRow, onDone, onCancel }) {
     }
   }
 
+  const inputStyle = {
+    width: '100%',
+    padding: '0.6rem 0.8rem',
+    borderRadius: '7px',
+    border: '1px solid var(--line)',
+    background: 'var(--surface)',
+    color: 'var(--ink)',
+    fontSize: '0.86rem',
+    outline: 'none',
+    boxSizing: 'border-box',
+  }
+
+  const cardSectionStyle = {
+    background: 'var(--card-bg)',
+    border: '1px solid var(--line)',
+    borderRadius: '10px',
+    padding: '1.2rem',
+    marginBottom: '1.3rem',
+  }
+
   return (
-    <div className="admin-modal-overlay" onClick={onCancel}>
+    <div className="admin-modal-overlay">
       <div
         className="admin-modal-card"
-        style={{ maxWidth: '750px' }}
-        onClick={(e) => e.stopPropagation()}
+        style={{
+          maxWidth: '920px',
+          maxHeight: '92vh',
+          overflowY: 'auto',
+          background: 'var(--bg)',
+          border: '1px solid var(--line)',
+          borderRadius: '12px',
+          padding: '1.75rem',
+          boxShadow: '0 20px 40px rgba(0, 0, 0, 0.25)',
+        }}
       >
-        <div className="admin-modal-head">
-          <h3 style={{ margin: 0, color: 'var(--ink)' }}>
-            {editingRow ? 'Edit Catatan Jurnal' : '+ Tambah Jurnal Fundamental'}
-          </h3>
-          <button type="button" className="admin-modal-close" onClick={onCancel}>×</button>
+        {/* Modal Title */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            <span style={{ fontSize: '1.4rem' }}>{editingRow?.id ? '✏️' : '📝'}</span>
+            <h3 style={{ margin: 0, color: 'var(--ink)', fontSize: '1.2rem', fontWeight: 700 }}>
+              {editingRow?.id ? 'Edit Jurnal Fundamental' : 'Tambah Jurnal Fundamental Baru'}
+            </h3>
+          </div>
+          <button
+            type="button"
+            onClick={onCancel}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: '#94a3b8',
+              fontSize: '1.2rem',
+              cursor: 'pointer',
+              padding: '0.2rem 0.5rem',
+            }}
+          >
+            ✕
+          </button>
         </div>
 
         <form onSubmit={handleSubmit}>
-          {/* Section 1: Informasi Dasar */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.8rem', marginBottom: '1.2rem' }}>
-            <div>
-              <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--ink-soft)' }}>Kode Saham</label>
-              <input
-                type="text"
-                required
-                placeholder="ACES"
-                value={kodeSaham}
-                onChange={(e) => setKodeSaham(e.target.value)}
-                style={{ width: '100%', padding: '0.45rem', borderRadius: '6px' }}
-              />
-            </div>
-            <div style={{ gridColumn: 'span 2' }}>
-              <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--ink-soft)' }}>Nama Perusahaan</label>
-              <input
-                type="text"
-                required
-                placeholder="PT Aspirasi Hidup Indonesia Tbk"
-                value={namaPerusahaan}
-                onChange={(e) => setNamaPerusahaan(e.target.value)}
-                style={{ width: '100%', padding: '0.45rem', borderRadius: '6px' }}
-              />
-            </div>
-            <div>
-              <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--ink-soft)' }}>Kuartal</label>
-              <select
-                value={kuartal.split(' ')[0]}
-                onChange={(e) => setKuartal(e.target.value)}
-                style={{ width: '100%', padding: '0.45rem', borderRadius: '6px', fontSize: '0.85rem' }}
-              >
-                <option value="Q1">Q1</option>
-                <option value="Q2">Q2</option>
-                <option value="Q3">Q3</option>
-                <option value="Q4">Q4 (Tahunan)</option>
-              </select>
-            </div>
-            <div>
-              <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--ink-soft)' }}>Tanggal Rilis</label>
-              <input
-                type="date"
-                value={tanggalUpdate}
-                onChange={(e) => setTanggalUpdate(e.target.value)}
-                style={{ width: '100%', padding: '0.45rem', borderRadius: '6px' }}
-              />
-            </div>
-          </div>
-
-          {/* Section 2: Metrik Finansial */}
-          <div style={{ background: 'var(--surface)', padding: '1rem', borderRadius: '8px', marginBottom: '1.2rem', border: '1px solid var(--line)' }}>
-            <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--ink)', display: 'block', marginBottom: '0.75rem' }}>
-              📊 Rasio Keuangan & Metrik Valuasi (Opsional)
+          {/* Section 1: Info Umum */}
+          <div style={cardSectionStyle}>
+            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '0.8rem' }}>
+              📌 Informasi Emiten
             </span>
-            
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.6rem' }}>
-              <div>
-                <label style={{ fontSize: '0.72rem', color: 'var(--ink-soft)' }}>Revenue YoY</label>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '1rem' }}>
+              <div className="form-group">
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--ink)', display: 'block', marginBottom: '0.35rem' }}>
+                  Kode Saham
+                </label>
                 <input
                   type="text"
-                  placeholder="+12.5%"
-                  value={revenueYoy}
-                  onChange={(e) => setRevenueYoy(e.target.value)}
-                  style={{ width: '100%', padding: '0.4rem', borderRadius: '4px', fontSize: '0.82rem' }}
+                  required
+                  placeholder="BMRI"
+                  value={kodeSaham}
+                  onChange={(e) => setKodeSaham(e.target.value.toUpperCase())}
+                  style={inputStyle}
                 />
               </div>
 
-              <div>
-                <label style={{ fontSize: '0.72rem', color: 'var(--ink-soft)' }}>Net Profit YoY</label>
+              <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--ink)', display: 'block', marginBottom: '0.35rem' }}>
+                  Nama Perusahaan
+                </label>
                 <input
                   type="text"
-                  placeholder="+24.0%"
-                  value={netProfitYoy}
-                  onChange={(e) => setNetProfitYoy(e.target.value)}
-                  style={{ width: '100%', padding: '0.4rem', borderRadius: '4px', fontSize: '0.82rem' }}
+                  required
+                  placeholder="PT. Bank Mandiri (Persero) Tbk."
+                  value={namaPerusahaan}
+                  onChange={(e) => setNamaPerusahaan(e.target.value)}
+                  style={inputStyle}
                 />
               </div>
 
-              <div>
-                <label style={{ fontSize: '0.72rem', color: 'var(--ink-soft)' }}>NPM (Net Margin)</label>
-                <input
-                  type="text"
-                  placeholder="14.2%"
-                  value={npm}
-                  onChange={(e) => setNpm(e.target.value)}
-                  style={{ width: '100%', padding: '0.4rem', borderRadius: '4px', fontSize: '0.82rem' }}
-                />
+              <div className="form-group">
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--ink)', display: 'block', marginBottom: '0.35rem' }}>
+                  Kuartal
+                </label>
+                <select
+                  value={kuartal}
+                  onChange={(e) => {
+                    setKuartal(e.target.value)
+                    autoCalculateRatios(rawLiabilitas, rawEkuitas, rawLabaSekarang, rawLabaLalu, e.target.value)
+                  }}
+                  style={{ ...inputStyle, cursor: 'pointer' }}
+                >
+                  <option value="Q1">Q1 (Kuartal 1)</option>
+                  <option value="Q2">Q2 (Kuartal 2)</option>
+                  <option value="Q3">Q3 (Kuartal 3)</option>
+                  <option value="Q4">Q4 (Full Year)</option>
+                </select>
               </div>
 
-              <div>
-                <label style={{ fontSize: '0.72rem', color: 'var(--ink-soft)' }}>ROE</label>
+              <div className="form-group">
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--ink)', display: 'block', marginBottom: '0.35rem' }}>
+                  Tanggal Rilis / Update
+                </label>
                 <input
-                  type="text"
-                  placeholder="18.5%"
-                  value={roe}
-                  onChange={(e) => setRoe(e.target.value)}
-                  style={{ width: '100%', padding: '0.4rem', borderRadius: '4px', fontSize: '0.82rem' }}
-                />
-              </div>
-
-              <div>
-                <label style={{ fontSize: '0.72rem', color: 'var(--ink-soft)' }}>DER (Utang/Modal)</label>
-                <input
-                  type="text"
-                  placeholder="0.45x"
-                  value={der}
-                  onChange={(e) => setDer(e.target.value)}
-                  style={{ width: '100%', padding: '0.4rem', borderRadius: '4px', fontSize: '0.82rem' }}
-                />
-              </div>
-
-              <div>
-                <label style={{ fontSize: '0.72rem', color: 'var(--ink-soft)' }}>PER / PBV</label>
-                <input
-                  type="text"
-                  placeholder="PER 8.5x | PBV 1.2x"
-                  value={per}
-                  onChange={(e) => setPer(e.target.value)}
-                  style={{ width: '100%', padding: '0.4rem', borderRadius: '4px', fontSize: '0.82rem' }}
-                />
-              </div>
-
-              <div>
-                <label style={{ fontSize: '0.72rem', color: 'var(--ink-soft)' }}>Target Harga</label>
-                <input
-                  type="text"
-                  placeholder="Rp 1.050"
-                  value={targetHarga}
-                  onChange={(e) => setTargetHarga(e.target.value)}
-                  style={{ width: '100%', padding: '0.4rem', borderRadius: '4px', fontSize: '0.82rem' }}
-                />
-              </div>
-
-              <div>
-                <label style={{ fontSize: '0.72rem', color: 'var(--ink-soft)' }}>Fair Value</label>
-                <input
-                  type="text"
-                  placeholder="Rp 1.200"
-                  value={fairValue}
-                  onChange={(e) => setFairValue(e.target.value)}
-                  style={{ width: '100%', padding: '0.4rem', borderRadius: '4px', fontSize: '0.82rem' }}
-                />
-              </div>
-
-              <div>
-                <label style={{ fontSize: '0.72rem', color: 'var(--ink-soft)' }}>Margin of Safety</label>
-                <input
-                  type="text"
-                  placeholder="25%"
-                  value={mos}
-                  onChange={(e) => setMos(e.target.value)}
-                  style={{ width: '100%', padding: '0.4rem', borderRadius: '4px', fontSize: '0.82rem' }}
-                />
-              </div>
-
-              <div>
-                <label style={{ fontSize: '0.72rem', color: 'var(--ink-soft)' }}>Div. Yield Est.</label>
-                <input
-                  type="text"
-                  placeholder="6.2%"
-                  value={dividenYield}
-                  onChange={(e) => setDividenYield(e.target.value)}
-                  style={{ width: '100%', padding: '0.4rem', borderRadius: '4px', fontSize: '0.82rem' }}
+                  type="date"
+                  required
+                  value={tanggalUpdate}
+                  onChange={(e) => setTanggalUpdate(e.target.value)}
+                  style={inputStyle}
                 />
               </div>
             </div>
           </div>
 
-          {/* Section 3: Referensi Dokumen / Link Video */}
-          <div style={{ marginBottom: '1.2rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-              <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--ink-soft)' }}>Referensi & Lampiran Dokumen</span>
-              <button type="button" className="btn-link" style={{ fontSize: '0.75rem' }} onClick={handleAddRef}>+ Tambah Link</button>
+          {/* Section 2: Auto Calculate Ratios */}
+          <div
+            style={{
+              ...cardSectionStyle,
+              background: 'rgba(2, 132, 199, 0.05)',
+              border: '1px dashed rgba(56, 189, 248, 0.3)',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.8rem', flexWrap: 'wrap', gap: '0.4rem' }}>
+              <strong style={{ fontSize: '0.88rem', color: '#38bdf8', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                ⚡ Auto-Calculate dari Angka Mentah Lapkeu
+              </strong>
+              <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                Ketik langsung angka dari PDF (tanpa titik ribuan)
+              </span>
             </div>
-            {referensi.map((r, idx) => (
-              <div key={idx} style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.4rem', alignItems: 'center' }}>
-                <select
-                  value={r.tipe}
-                  onChange={(e) => handleRefChange(idx, 'tipe', e.target.value)}
-                  style={{ padding: '0.4rem', borderRadius: '4px', fontSize: '0.8rem' }}
-                >
-                  <option value="dokumen">📁 PDF / Drive</option>
-                  <option value="berita">📰 Berita</option>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.85rem' }}>
+              <div className="form-group">
+                <label style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'block', marginBottom: '0.3rem' }}>
+                  Total Liabilitas (Utang)
+                </label>
+                <input
+                  type="number"
+                  step="any"
+                  placeholder="2234540"
+                  value={rawLiabilitas}
+                  onChange={(e) => {
+                    const v = e.target.value
+                    setRawLiabilitas(v)
+                    autoCalculateRatios(v, rawEkuitas, rawLabaSekarang, rawLabaLalu, kuartal)
+                  }}
+                  style={inputStyle}
+                />
+              </div>
+
+              <div className="form-group">
+                <label style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'block', marginBottom: '0.3rem' }}>
+                  Total Ekuitas (Modal)
+                </label>
+                <input
+                  type="number"
+                  step="any"
+                  placeholder="293020"
+                  value={rawEkuitas}
+                  onChange={(e) => {
+                    const v = e.target.value
+                    setRawEkuitas(v)
+                    autoCalculateRatios(rawLiabilitas, v, rawLabaSekarang, rawLabaLalu, kuartal)
+                  }}
+                  style={inputStyle}
+                />
+              </div>
+
+              <div className="form-group">
+                <label style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'block', marginBottom: '0.3rem' }}>
+                  Laba Induk (Periode Ini)
+                </label>
+                <input
+                  type="number"
+                  step="any"
+                  placeholder="30412"
+                  value={rawLabaSekarang}
+                  onChange={(e) => {
+                    const v = e.target.value
+                    setRawLabaSekarang(v)
+                    autoCalculateRatios(rawLiabilitas, rawEkuitas, v, rawLabaLalu, kuartal)
+                  }}
+                  style={inputStyle}
+                />
+              </div>
+
+              <div className="form-group">
+                <label style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'block', marginBottom: '0.3rem' }}>
+                  Laba Induk (Tahun Lalu)
+                </label>
+                <input
+                  type="number"
+                  step="any"
+                  placeholder="24455"
+                  value={rawLabaLalu}
+                  onChange={(e) => {
+                    const v = e.target.value
+                    setRawLabaLalu(v)
+                    autoCalculateRatios(rawLiabilitas, rawEkuitas, rawLabaSekarang, v, kuartal)
+                  }}
+                  style={inputStyle}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Section 3: Rasio Finansial & Valuasi */}
+          <div style={cardSectionStyle}>
+            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '0.8rem' }}>
+              📊 Rasio Keuangan & Metrik Valuasi
+            </span>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.9rem' }}>
+              <div className="form-group">
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--ink)', display: 'block', marginBottom: '0.2rem' }}>
+                  Revenue YoY
+                  <span style={{ display: 'block', fontSize: '0.68rem', color: '#94a3b8', fontWeight: 400 }}>((Rev Ini - Rev Lalu) / Rev Lalu) × 100%</span>
+                </label>
+                <input type="text" placeholder="+12.5%" value={revenueYoy} onChange={(e) => setRevenueYoy(e.target.value)} style={inputStyle} />
+              </div>
+
+              <div className="form-group">
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--ink)', display: 'block', marginBottom: '0.2rem' }}>
+                  Net Profit YoY
+                  <span style={{ display: 'block', fontSize: '0.68rem', color: '#94a3b8', fontWeight: 400 }}>((Laba Ini - Lalu) / Lalu) × 100%</span>
+                </label>
+                <input type="text" placeholder="+24.0%" value={netProfitYoy} onChange={(e) => setNetProfitYoy(e.target.value)} style={inputStyle} />
+              </div>
+
+              <div className="form-group">
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--ink)', display: 'block', marginBottom: '0.2rem' }}>
+                  NPM (Margin)
+                  <span style={{ display: 'block', fontSize: '0.68rem', color: '#94a3b8', fontWeight: 400 }}>(Laba Bersih / Revenue) × 100%</span>
+                </label>
+                <input type="text" placeholder="14.2%" value={npm} onChange={(e) => setNpm(e.target.value)} style={inputStyle} />
+              </div>
+
+              <div className="form-group">
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--ink)', display: 'block', marginBottom: '0.2rem' }}>
+                  ROE (Annualized)
+                  <span style={{ display: 'block', fontSize: '0.68rem', color: '#94a3b8', fontWeight: 400 }}>(Laba Disetahunkan / Modal) × 100%</span>
+                </label>
+                <input type="text" placeholder="18.5%" value={roe} onChange={(e) => setRoe(e.target.value)} style={inputStyle} />
+              </div>
+
+              <div className="form-group">
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--ink)', display: 'block', marginBottom: '0.2rem' }}>
+                  DER (Utang / Modal)
+                  <span style={{ display: 'block', fontSize: '0.68rem', color: '#94a3b8', fontWeight: 400 }}>Total Liabilitas / Total Ekuitas</span>
+                </label>
+                <input type="text" placeholder="0.45x" value={der} onChange={(e) => setDer(e.target.value)} style={inputStyle} />
+              </div>
+
+              <div className="form-group">
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--ink)', display: 'block', marginBottom: '0.2rem' }}>
+                  PER / PBV
+                  <span style={{ display: 'block', fontSize: '0.68rem', color: '#94a3b8', fontWeight: 400 }}>Harga / EPS | Harga / BVPS</span>
+                </label>
+                <input type="text" placeholder="PER 8.5x | PBV 1.2x" value={per} onChange={(e) => setPer(e.target.value)} style={inputStyle} />
+              </div>
+
+              <div className="form-group">
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--ink)', display: 'block', marginBottom: '0.2rem' }}>
+                  Target Harga
+                  <span style={{ display: 'block', fontSize: '0.68rem', color: '#94a3b8', fontWeight: 400 }}>Target TP / Exit</span>
+                </label>
+                <input type="text" placeholder="Rp 1.050" value={targetHarga} onChange={(e) => setTargetHarga(e.target.value)} style={inputStyle} />
+              </div>
+
+              <div className="form-group">
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--ink)', display: 'block', marginBottom: '0.2rem' }}>
+                  Fair Value
+                  <span style={{ display: 'block', fontSize: '0.68rem', color: '#94a3b8', fontWeight: 400 }}>Valuasi wajar</span>
+                </label>
+                <input type="text" placeholder="Rp 1.200" value={fairValue} onChange={(e) => setFairValue(e.target.value)} style={inputStyle} />
+              </div>
+
+              <div className="form-group">
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--ink)', display: 'block', marginBottom: '0.2rem' }}>
+                  Margin of Safety (MoS)
+                  <span style={{ display: 'block', fontSize: '0.68rem', color: '#94a3b8', fontWeight: 400 }}>((FV - Harga) / FV) × 100%</span>
+                </label>
+                <input type="text" placeholder="25%" value={mos} onChange={(e) => setMos(e.target.value)} style={inputStyle} />
+              </div>
+
+              <div className="form-group">
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--ink)', display: 'block', marginBottom: '0.2rem' }}>
+                  Div. Yield Est.
+                  <span style={{ display: 'block', fontSize: '0.68rem', color: '#94a3b8', fontWeight: 400 }}>(Estimasi DPS / Harga) × 100%</span>
+                </label>
+                <input type="text" placeholder="6.2%" value={dividenYield} onChange={(e) => setDividenYield(e.target.value)} style={inputStyle} />
+              </div>
+            </div>
+          </div>
+
+          {/* Section 4: Rasio Khusus Perbankan */}
+          <div
+            style={{
+              ...cardSectionStyle,
+              background: 'rgba(56, 189, 248, 0.03)',
+              border: '1px solid rgba(56, 189, 248, 0.18)',
+            }}
+          >
+            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#38bdf8', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '0.8rem' }}>
+              🏦 Rasio Khusus Perbankan (Opsional)
+            </span>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.9rem' }}>
+              <div className="form-group">
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--ink)', display: 'block', marginBottom: '0.2rem' }}>
+                  CASA Ratio (%)
+                  <span style={{ display: 'block', fontSize: '0.68rem', color: '#94a3b8', fontWeight: 400 }}>((Giro + Tabungan) / DPK) × 100%</span>
+                </label>
+                <input type="text" placeholder="69.19%" value={casa} onChange={(e) => setCasa(e.target.value)} style={inputStyle} />
+              </div>
+
+              <div className="form-group">
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--ink)', display: 'block', marginBottom: '0.2rem' }}>
+                  NIM (%)
+                  <span style={{ display: 'block', fontSize: '0.68rem', color: '#94a3b8', fontWeight: 400 }}>NII Disetahunkan / Rata-rata Aset</span>
+                </label>
+                <input type="text" placeholder="5.12%" value={nim} onChange={(e) => setNim(e.target.value)} style={inputStyle} />
+              </div>
+
+              <div className="form-group">
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--ink)', display: 'block', marginBottom: '0.2rem' }}>
+                  NPL Gross (%)
+                  <span style={{ display: 'block', fontSize: '0.68rem', color: '#94a3b8', fontWeight: 400 }}>Kredit Macet / Total Kredit</span>
+                </label>
+                <input type="text" placeholder="1.01%" value={nplGross} onChange={(e) => setNplGross(e.target.value)} style={inputStyle} />
+              </div>
+            </div>
+          </div>
+
+          {/* Section 5: Referensi & Lampiran */}
+          <div style={cardSectionStyle}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.8rem' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                📁 Referensi & Lampiran Dokumen
+              </span>
+              <button
+                type="button"
+                onClick={handleAddRef}
+                style={{
+                  background: 'rgba(56, 189, 248, 0.1)',
+                  border: '1px solid rgba(56, 189, 248, 0.25)',
+                  color: '#38bdf8',
+                  borderRadius: '6px',
+                  padding: '0.35rem 0.75rem',
+                  fontSize: '0.78rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                + Tambah Link
+              </button>
+            </div>
+
+            {referensi.map((ref, idx) => (
+              <div
+                key={idx}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '130px 1fr 1fr 1fr auto',
+                  gap: '0.6rem',
+                  marginBottom: '0.6rem',
+                  alignItems: 'center',
+                }}
+              >
+                <select value={ref.tipe} onChange={(e) => handleRefChange(idx, 'tipe', e.target.value)} style={{ ...inputStyle, cursor: 'pointer' }}>
+                  <option value="dokumen">📁 Lapkeu/PDF</option>
+                  <option value="video">🎬 Video</option>
+                  <option value="berita">📰 Berita/Riset</option>
                 </select>
-                <input
-                  type="text"
-                  placeholder="Label (contoh: Jurnal PDF)"
-                  value={r.label}
-                  onChange={(e) => handleRefChange(idx, 'label', e.target.value)}
-                  style={{ flex: 1, padding: '0.4rem', borderRadius: '4px', fontSize: '0.8rem' }}
-                />
-                <input
-                  type="url"
-                  placeholder="URL link..."
-                  value={r.url}
-                  onChange={(e) => handleRefChange(idx, 'url', e.target.value)}
-                  style={{ flex: 1.5, padding: '0.4rem', borderRadius: '4px', fontSize: '0.8rem' }}
-                />
-                <button type="button" className="btn-danger" style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }} onClick={() => handleRemoveRef(idx)}>✕</button>
+                <input type="text" placeholder="Label (LK BMRI Q2 2026)" value={ref.label} onChange={(e) => handleRefChange(idx, 'label', e.target.value)} style={inputStyle} />
+                <input type="text" placeholder="URL Dokumen" value={ref.url} onChange={(e) => handleRefChange(idx, 'url', e.target.value)} style={inputStyle} />
+                <input type="text" placeholder="Sumber (IDX / IR)" value={ref.sumber} onChange={(e) => handleRefChange(idx, 'sumber', e.target.value)} style={inputStyle} />
+                <button
+                  type="button"
+                  onClick={() => handleRemoveRef(idx)}
+                  style={{
+                    background: 'rgba(239, 68, 68, 0.15)',
+                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                    color: '#f87171',
+                    borderRadius: '6px',
+                    width: '32px',
+                    height: '34px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  ✕
+                </button>
               </div>
             ))}
           </div>
 
-          {/* Section 4: Catatan Narasi & Screenshot Lapkeu */}
-          <div style={{ marginBottom: '1.5rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-              <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--ink-soft)' }}>Catatan Riset & Bukti Lapkeu</span>
-              <button type="button" className="btn-link" style={{ fontSize: '0.75rem' }} onClick={handleAddBlok}>+ Tambah Paragraf/Blok</button>
+          {/* Section 6: Catatan Riset & Bukti Gambar */}
+          <div style={cardSectionStyle}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.8rem' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--ink-soft)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                📖 Catatan Riset & Bukti Screenshot
+              </span>
+              <button
+                type="button"
+                className="btn-sm btn-ghost"
+                onClick={handleAddBlok}
+              >
+                + Tambah Paragraf
+              </button>
             </div>
 
-            {catatanRiset.map((blok, blokIdx) => (
-              <div key={blokIdx} style={{ background: 'var(--surface)', padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--line)', marginBottom: '0.8rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--ink-soft)' }}>Bagian #{blokIdx + 1}</span>
+            {catatanRiset.map((blok, blokIndex) => (
+              <div
+                key={blokIndex}
+                style={{
+                  background: 'var(--surface)',
+                  padding: '1rem',
+                  borderRadius: '8px',
+                  border: '1px solid var(--line)',
+                  marginBottom: '1rem',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--ink)' }}>
+                    Paragraf Analisa #{blokIndex + 1}
+                  </span>
                   {catatanRiset.length > 1 && (
-                    <button type="button" className="btn-danger" style={{ fontSize: '0.7rem', padding: '0.1rem 0.4rem' }} onClick={() => handleRemoveBlok(blokIdx)}>Hapus Bagian</button>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveBlok(blokIndex)}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'var(--loss)',
+                        fontSize: '0.75rem',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Hapus Paragraf
+                    </button>
                   )}
                 </div>
+
                 <textarea
-                  rows="3"
-                  placeholder="Tulis analisa mendalam atau ringkasan baris laporan keuangan di sini..."
+                  rows={4}
+                  placeholder="Tulis analisa fundamental, penjelasan neraca, laba rugi, atau rumus KaTeX ($...$ atau $$...$$)..."
                   value={blok.paragraf}
-                  onChange={(e) => handleParagrafChange(blokIdx, e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', fontSize: '0.85rem', marginBottom: '0.5rem' }}
+                  onChange={(e) => handleParagrafChange(blokIndex, e.target.value)}
+                  style={{ ...inputStyle, marginBottom: '0.8rem', resize: 'vertical' }}
                 />
 
-                {blok.gambar_lapkeu?.map((img, imgIdx) => (
-                  <div key={imgIdx} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.4rem', background: 'var(--card-bg)', padding: '0.4rem', borderRadius: '6px', border: '1px solid var(--line)' }}>
-                    <img src={img.url} alt="lapkeu" style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px' }} />
-                    <input
-                      type="text"
-                      placeholder="Caption gambar (contoh: CaLK No 13 Aset Tetap)"
-                      value={img.caption}
-                      onChange={(e) => handleCaptionChange(blokIdx, imgIdx, e.target.value)}
-                      style={{ flex: 1, padding: '0.35rem', borderRadius: '4px', fontSize: '0.8rem' }}
-                    />
-                    <button type="button" className="btn-danger" style={{ fontSize: '0.7rem', padding: '0.2rem 0.4rem' }} onClick={() => handleRemoveImage(blokIdx, imgIdx)}>✕</button>
-                  </div>
-                ))}
-
                 <div>
-                  <label style={{ display: 'inline-block', cursor: 'pointer', fontSize: '0.75rem', color: '#38bdf8', fontWeight: 500 }}>
-                    {uploadingIndex === blokIdx ? '⏳ Mengunggah gambar...' : '📷 + Upload Screenshot Lapkeu'}
+                  <label
+                    className="btn-sm btn-ghost"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      cursor: 'pointer',
+                      margin: 0,
+                    }}
+                  >
+                    {uploadingIndex === blokIndex ? '⏳ Mengunggah...' : '📷 + Upload Screenshot Lapkeu'}
                     <input
                       type="file"
                       accept="image/*"
-                      disabled={uploadingIndex === blokIdx}
                       style={{ display: 'none' }}
-                      onChange={(e) => handleUploadImage(blokIdx, e)}
+                      disabled={uploadingIndex !== null}
+                      onChange={(e) => handleUploadImage(blokIndex, e)}
                     />
                   </label>
                 </div>
+
+                {blok.gambar_lapkeu && blok.gambar_lapkeu.length > 0 && (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: '0.8rem', marginTop: '0.8rem' }}>
+                    {blok.gambar_lapkeu.map((img, imgIdx) => (
+                      <div
+                        key={imgIdx}
+                        style={{
+                          position: 'relative',
+                          background: 'var(--card-bg)',
+                          border: '1px solid var(--line)',
+                          borderRadius: '6px',
+                          padding: '0.5rem',
+                        }}
+                      >
+                        <img
+                          src={img.url}
+                          alt="bukti lapkeu"
+                          style={{ width: '100%', height: '110px', objectFit: 'contain', background: 'var(--surface)', borderRadius: '4px' }}
+                        />
+                        <input
+                          type="text"
+                          placeholder="Caption gambar..."
+                          value={img.caption || ''}
+                          onChange={(e) => handleCaptionChange(blokIndex, imgIdx, e.target.value)}
+                          style={{ ...inputStyle, fontSize: '0.75rem', marginTop: '0.4rem', padding: '0.4rem' }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveImage(blokIndex, imgIdx)}
+                          style={{
+                            position: 'absolute',
+                            top: '8px',
+                            right: '8px',
+                            background: 'var(--loss)',
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: '50%',
+                            width: '22px',
+                            height: '22px',
+                            cursor: 'pointer',
+                            fontSize: '0.75rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
           </div>
 
-          {/* Tombol Aksi */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.6rem', borderTop: '1px solid var(--line)', paddingTop: '1rem' }}>
-            <button type="button" className="btn-sm btn-ghost" onClick={onCancel} disabled={submitting}>Batal</button>
-            <button type="submit" className="btn-sm btn-primary" disabled={submitting}>
-              {submitting ? 'Menyimpan...' : 'Simpan Catatan'}
+          {/* Action Buttons Footer */}
+          <div
+            style={{
+              display: 'flex',
+              gap: '0.8rem',
+              justifyContent: 'flex-end',
+              paddingTop: '1rem',
+              borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+            }}
+          >
+            <button
+              type="button"
+              onClick={onCancel}
+              disabled={submitting}
+              style={{
+                background: 'rgba(255, 255, 255, 0.05)',
+                border: '1px solid rgba(255, 255, 255, 0.12)',
+                color: '#94a3b8',
+                borderRadius: '8px',
+                padding: '0.6rem 1.4rem',
+                fontSize: '0.88rem',
+                cursor: 'pointer',
+                fontWeight: 600,
+              }}
+            >
+              Batal
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              style={{
+                background: '#0284c7',
+                border: 'none',
+                color: '#ffffff',
+                borderRadius: '8px',
+                padding: '0.6rem 1.6rem',
+                fontSize: '0.88rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                boxShadow: '0 4px 14px rgba(2, 132, 199, 0.4)',
+              }}
+            >
+              {submitting ? 'Menyimpan...' : editingRow?.id ? 'Simpan Perubahan' : 'Buat Jurnal'}
             </button>
           </div>
         </form>
