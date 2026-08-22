@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import React, { useState } from 'react'
 import { TICKER_DOMAINS } from '../lib/tickerDomains'
 
 // Warna avatar fallback deterministik per kode saham
@@ -16,44 +17,42 @@ function colorFor(kode) {
 // 2. CDN Stockbit Logo (otomatis untuk hampir semua saham IHSG)
 // 3. Google Favicon dari domain resmi perusahaan
 // 4. Inisial teks abjad (fallback terakhir)
-export default function TickerBadge({ kode }) {
-  const cleanKode = kode?.toUpperCase() || ''
-  const domain = TICKER_DOMAINS[cleanKode]
-  const [stage, setStage] = useState('local')
+export default function TickerBadge({ kode = '', size = 20 }) {
+  const [hasError, setHasError] = useState(false)
+  const cleanKode = (kode || '').trim().toUpperCase()
 
-  if (stage === 'fallback' || !cleanKode) {
+  // Jika kode kosong atau gambar sebelumnya gagal load, tampilkan fallback badge huruf
+  if (!cleanKode || hasError) {
+    const initial = cleanKode ? cleanKode.slice(0, 2) : '?'
     return (
-      <span className="ticker-badge ticker-badge-fallback" style={{ background: colorFor(cleanKode) }} title={cleanKode}>
-        {cleanKode.slice(0, 2)}
+      <span
+        className="ticker-badge ticker-badge-fallback"
+        style={{
+          width: `${size}px`,
+          height: `${size}px`,
+          minWidth: `${size}px`,
+          minHeight: `${size}px`,
+          fontSize: `${Math.max(10, Math.floor(size * 0.38))}px`,
+          background: '#0284c7',
+        }}
+      >
+        {initial}
       </span>
     )
   }
 
-  // Tentukan URL gambar berdasarkan stage saat ini
-  let src = `/logos/${cleanKode}.png`
-  if (stage === 'cdn') {
-    src = `https://assets.stockbit.com/logos/companies/${cleanKode}.png`
-  } else if (stage === 'domain') {
-    src = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`
-  }
-
-  // Handler transisi jika logo gagal dimuat (404/error)
-  const handleError = () => {
-    if (stage === 'local') {
-      setStage('cdn')
-    } else if (stage === 'cdn') {
-      setStage(domain ? 'domain' : 'fallback')
-    } else {
-      setStage('fallback')
-    }
-  }
-
   return (
     <img
-      className="ticker-badge"
-      src={src}
+      src={`/logos/${cleanKode}.png`}
       alt={cleanKode}
-      onError={handleError}
+      className="ticker-badge"
+      style={{
+        width: `${size}px`,
+        height: `${size}px`,
+        minWidth: `${size}px`,
+        minHeight: `${size}px`,
+      }}
+      onError={() => setHasError(true)}
     />
   )
 }
