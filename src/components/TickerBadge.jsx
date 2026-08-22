@@ -1,8 +1,8 @@
 import React, { useState } from 'react'
 import { TICKER_DOMAINS } from '../lib/tickerDomains'
 
-// Warna avatar deterministik per emiten
-const AVATAR_COLORS = ['#0284c7', '#2563eb', '#0d9488', '#16a34a', '#d97706', '#dc2626', '#7c3aed']
+// Warna avatar fallback deterministik per kode saham
+const AVATAR_COLORS = ['#14171a', '#2f5233', '#7a4a1f', '#3a4a7a', '#7a2f4a', '#1f5a5a', '#5a3a7a']
 
 function colorFor(kode) {
   if (!kode) return AVATAR_COLORS[0]
@@ -11,55 +11,46 @@ function colorFor(kode) {
   return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length]
 }
 
-export default function TickerBadge({ kode = '', size = 20 }) {
-  const [hasError, setHasError] = useState(false)
-  const cleanKode = (kode || '').trim().toUpperCase()
-  const domain = TICKER_DOMAINS?.[cleanKode]
+// Urutan pencarian logo:
+// 1. CDN Stockbit Logo (otomatis untuk hampir semua saham IHSG)
+// 2. Google Favicon dari domain resmi perusahaan (jika ada di tickerDomains)
+// 3. Inisial teks abjad (fallback terakhir)
+export default function TickerBadge({ kode }) {
+  const cleanKode = kode?.toUpperCase() || ''
+  const domain = TICKER_DOMAINS[cleanKode]
+  
+  // Default langsung mulai dari 'cdn' agar tidak memicu 404 lokal di console
+  const [stage, setStage] = useState('cdn')
 
-  // Render badge inisial teks bulat
-  const renderFallback = () => (
-    <span
-      className="ticker-badge ticker-badge-fallback"
-      style={{
-        width: `${size}px`,
-        height: `${size}px`,
-        minWidth: `${size}px`,
-        minHeight: `${size}px`,
-        fontSize: `${Math.max(10, Math.floor(size * 0.38))}px`,
-        background: colorFor(cleanKode),
-        borderRadius: '50%',
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        color: '#ffffff',
-        fontWeight: 700,
-        flexShrink: 0,
-      }}
-    >
-      {cleanKode ? cleanKode.slice(0, 2) : '?'}
-    </span>
-  )
+  if (stage === 'fallback' || !cleanKode) {
+    return (
+      <span className="ticker-badge ticker-badge-fallback" style={{ background: colorFor(cleanKode) }} title={cleanKode}>
+        {cleanKode.slice(0, 2)}
+      </span>
+    )
+  }
 
-  // Jika emiten tidak terdaftar di tickerDomains atau gagal load gambar, langsung tampilkan inisial (tanpa request domain rusak)
-  if (!cleanKode || !domain || hasError) {
-    return renderFallback()
+  // Tentukan URL gambar berdasarkan stage saat ini
+  let src = `https://assets.stockbit.com/logos/companies/${cleanKode}.png`
+  if (stage === 'domain') {
+    src = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`
+  }
+
+  // Handler transisi jika logo gagal dimuat
+  const handleError = () => {
+    if (stage === 'cdn') {
+      setStage(domain ? 'domain' : 'fallback')
+    } else {
+      setStage('fallback')
+    }
   }
 
   return (
     <img
-      src={`https://www.google.com/s2/favicons?domain=${domain}&sz=64`}
-      alt={cleanKode}
       className="ticker-badge"
-      style={{
-        width: `${size}px`,
-        height: `${size}px`,
-        minWidth: `${size}px`,
-        minHeight: `${size}px`,
-        borderRadius: '50%',
-        objectFit: 'cover',
-        flexShrink: 0,
-      }}
-      onError={() => setHasError(true)}
+      src={src}
+      alt={cleanKode}
+      onError={handleError}
     />
   )
 }
