@@ -14,7 +14,9 @@ function colorFor(kode) {
 export default function TickerBadge({ kode }) {
   const cleanKode = kode?.toUpperCase() || ''
   const domain = TICKER_DOMAINS?.[cleanKode]
-  const [stage, setStage] = useState('tv') // Mulai dari CDN TradingView / GoStock
+  
+  // Langsung mulai dari CDN Stockbit asli kamu
+  const [stage, setStage] = useState('cdn')
 
   if (stage === 'fallback' || !cleanKode) {
     return (
@@ -24,15 +26,15 @@ export default function TickerBadge({ kode }) {
     )
   }
 
-  // 1. CDN TradingView (Sangat lengkap untuk saham IDX)
-  // 2. Google Favicon via domain resmi
-  let src = `https://s3-symbol-logo.tradingview.com/idx--${cleanKode.toLowerCase()}.svg`
+  // Tahap 1: CDN Stockbit asli
+  // Tahap 2: Google Favicon domain resmi
+  let src = `https://assets.stockbit.com/logos/companies/${cleanKode}.png`
   if (stage === 'domain') {
     src = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`
   }
 
   const handleError = () => {
-    if (stage === 'tv') {
+    if (stage === 'cdn') {
       setStage(domain ? 'domain' : 'fallback')
     } else {
       setStage('fallback')
