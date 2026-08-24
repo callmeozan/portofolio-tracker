@@ -138,7 +138,8 @@ function CheatSheetBox() {
 
       {isExpanded && (
         <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px dashed var(--line)' }}>
-          {/* Rasio Universal & Laba */}
+          
+          {/* 1. Rasio Universal & Laba */}
           <div style={{ marginBottom: '1.25rem' }}>
             <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--ink-soft)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '0.6rem' }}>
               📊 Rasio Universal & Laba
@@ -164,15 +165,49 @@ function CheatSheetBox() {
                 formula="\text{DER (x)} = \frac{\text{Total Liabilitas}}{\text{Total Ekuitas}}"
                 note="Porsi utang terhadap modal bersih"
               />
+            </div>
+          </div>
+
+          {/* 2. Metrik Valuasi & Pasar */}
+          <div style={{ marginBottom: '1.25rem' }}>
+            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '0.6rem' }}>
+              💎 Metrik Valuasi & Harga Pasar
+            </span>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '0.75rem' }}>
+              <FormulaItem
+                title="Price to Earnings (PER)"
+                formula="\text{PER (x)} = \frac{\text{Harga Saham}}{\text{EPS (Annualized)}}"
+                note="Rasio harga terhadap laba per lembar"
+                color="#10b981"
+              />
+              <FormulaItem
+                title="Price to Book Value (PBV)"
+                formula="\text{PBV (x)} = \frac{\text{Harga Saham}}{\text{BVPS}}"
+                note="Rasio harga terhadap nilai buku modal"
+                color="#10b981"
+              />
+              <FormulaItem
+                title="Fair Value (Harga Wajar)"
+                formula="\text{Fair Value} = \text{Mean PBV Historis} \times \text{BVPS}"
+                note="Valuasi wajar berbasis rata-rata PBV historis"
+                color="#10b981"
+              />
               <FormulaItem
                 title="Margin of Safety (MoS)"
-                formula="\text{MoS (\%)} = \frac{\text{Fair Value} - \text{Harga Pasar}}{\text{Fair Value}} \times 100"
-                note="Diskon harga beli terhadap valuasi wajar"
+                formula="\text{MoS (\%)} = \frac{\text{Fair Value} - \text{Harga Saham}}{\text{Fair Value}} \times 100"
+                note="Diskon pengaman beli terhadap nilai wajar"
+                color="#10b981"
+              />
+              <FormulaItem
+                title="Estimasi Dividend Yield"
+                formula="\text{Div. Yield (\%)} = \frac{\text{EPS} \times \text{DPR (\%)}}{\text{Harga Saham}} \times 100"
+                note="Estimasi persentase dividen tahunan terhadap harga beli"
+                color="#10b981"
               />
             </div>
           </div>
 
-          {/* Rasio Khusus Perbankan */}
+          {/* 3. Rasio Khusus Perbankan */}
           <div>
             <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#38bdf8', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '0.6rem' }}>
               🏦 Rasio Khusus Perbankan
@@ -198,6 +233,7 @@ function CheatSheetBox() {
               />
             </div>
           </div>
+
         </div>
       )}
     </div>
@@ -428,7 +464,11 @@ function JournalCard({ item, isAdmin, onEdit, onDelete }) {
                 {m.per && (
                   <div style={{ background: 'var(--surface)', padding: '0.7rem', borderRadius: '6px', border: '1px solid var(--line)' }}>
                     <span style={{ fontSize: '0.72rem', color: 'var(--ink-soft)', display: 'block' }}>PER / PBV</span>
-                    <strong style={{ fontSize: '0.95rem', color: 'var(--ink)' }}>{m.per}</strong>
+                    <strong style={{ fontSize: '0.95rem', color: 'var(--ink)' }}>
+                      {m.per && m.pbv && !m.per.includes('|')
+                        ? `PER ${m.per} | PBV ${m.pbv}`
+                        : (m.per || '-')}
+                    </strong>
                   </div>
                 )}
               </div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
 
 export default function JournalForm({ editingRow, onDone, onCancel }) {
@@ -33,10 +33,16 @@ export default function JournalForm({ editingRow, onDone, onCancel }) {
   const [nplGross, setNplGross] = useState(editingRow?.metrik?.npl_gross || '')
 
   // State Input Mentah Lapkeu untuk Auto-Calculate
-  const [rawLiabilitas, setRawLiabilitas] = useState('')
-  const [rawEkuitas, setRawEkuitas] = useState('')
-  const [rawLabaSekarang, setRawLabaSekarang] = useState('')
-  const [rawLabaLalu, setRawLabaLalu] = useState('')
+  const [rawLiabilitas, setRawLiabilitas] = useState(editingRow?.metrik?.raw_liabilitas || '')
+  const [rawEkuitas, setRawEkuitas] = useState(editingRow?.metrik?.raw_ekuitas || '')
+  const [rawLabaSekarang, setRawLabaSekarang] = useState(editingRow?.metrik?.raw_laba_sekarang || '')
+  const [rawLabaLalu, setRawLabaLalu] = useState(editingRow?.metrik?.raw_laba_lalu || '')
+  const [rawRevSekarang, setRawRevSekarang] = useState(editingRow?.metrik?.raw_rev_sekarang || '')
+  const [rawRevLalu, setRawRevLalu] = useState(editingRow?.metrik?.raw_rev_lalu || '')
+  const [rawHargaSaham, setRawHargaSaham] = useState(editingRow?.metrik?.raw_harga_saham || '')
+  const [rawLembarSaham, setRawLembarSaham] = useState(editingRow?.metrik?.raw_lembar_saham || '')
+  const [rawMeanPbv, setRawMeanPbv] = useState(editingRow?.metrik?.raw_mean_pbv || '')
+  const [rawDpr, setRawDpr] = useState(editingRow?.metrik?.raw_dpr || '')
 
   // Referensi & Catatan Riset
   const [referensi, setReferensi] = useState(
@@ -46,32 +52,132 @@ export default function JournalForm({ editingRow, onDone, onCancel }) {
     editingRow?.catatan_riset || [{ paragraf: '', gambar_lapkeu: [] }]
   )
 
-  const autoCalculateRatios = (liab, eku, labaNow, labaPast, q) => {
+  const autoCalculateRatios = (liab, eku, labaNow, labaPast, revNow, revPast, q, harga, shares, meanPbv, dpr) => {
     const l = parseFloat(liab)
     const e = parseFloat(eku)
     const lp = parseFloat(labaNow)
     const lpast = parseFloat(labaPast)
+    const rNow = parseFloat(revNow)
+    const rPast = parseFloat(revPast)
+    const price = parseFloat(harga)
+    const totalShares = parseFloat(shares)
+    const histPbv = parseFloat(meanPbv)
+    const dprVal = parseFloat(dpr)
 
+    // Tentukan Multiplier Annualized berdasarkan Kuartal
+    let multiplier = 1
+    if (q.includes('Q1')) multiplier = 4
+    else if (q.includes('Q2')) multiplier = 2
+    else if (q.includes('Q3')) multiplier = 4 / 3
+
+    // 1. DER
     if (!isNaN(l) && !isNaN(e) && e !== 0) {
       setDer((l / e).toFixed(2) + 'x')
     }
 
+    // 2. ROE (Annualized)
     if (!isNaN(lp) && !isNaN(e) && e !== 0) {
-      let multiplier = 1
-      if (q.includes('Q1')) multiplier = 4
-      else if (q.includes('Q2')) multiplier = 2
-      else if (q.includes('Q3')) multiplier = 4 / 3
-
       const roeVal = ((lp * multiplier) / e) * 100
       setRoe(roeVal.toFixed(2) + '%')
     }
 
+    // 3. Net Profit YoY
     if (!isNaN(lp) && !isNaN(lpast) && lpast !== 0) {
       const yoyVal = ((lp - lpast) / Math.abs(lpast)) * 100
       const sign = yoyVal > 0 ? '+' : ''
       setNetProfitYoy(`${sign}${yoyVal.toFixed(2)}%`)
     }
+
+    // 4. Revenue YoY
+    if (!isNaN(rNow) && !isNaN(rPast) && rPast !== 0) {
+      const revYoyVal = ((rNow - rPast) / Math.abs(rPast)) * 100
+      const sign = revYoyVal > 0 ? '+' : ''
+      setRevenueYoy(`${sign}${revYoyVal.toFixed(2)}%`)
+    }
+
+    // 5. NPM (Margin)
+    if (!isNaN(lp) && !isNaN(rNow) && rNow !== 0) {
+      const npmVal = (lp / rNow) * 100
+      setNpm(npmVal.toFixed(2) + '%')
+    }
+
+    // 6. EPS & BVPS (Per Lembar Saham) - Dikalikan 1.000.000 karena lapkeu PDF disajikan dalam jutaan rupiah
+    let bvps = null
+    let epsAnnual = null
+    if (!isNaN(totalShares) && totalShares !== 0) {
+      if (!isNaN(e)) bvps = (e * 1000000) / totalShares
+      if (!isNaN(lp)) epsAnnual = ((lp * 1000000) * multiplier) / totalShares
+    }
+
+    // 7. PER & PBV
+    if (!isNaN(price) && price > 0) {
+      if (epsAnnual !== null && epsAnnual > 0) {
+        setPer(`${(price / epsAnnual).toFixed(1)}x`)
+      } else {
+        setPer('-')
+      }
+
+      if (bvps !== null && bvps > 0) {
+        const calculatedPbv = price / bvps
+        setPbv(`${calculatedPbv.toFixed(2)}x`)
+      } else {
+        setPbv('-')
+      }
+    }
+
+    // 8. Fair Value & Target Harga
+    let fvNumber = null
+    if (bvps !== null && !isNaN(histPbv) && histPbv > 0) {
+      fvNumber = Math.round(bvps * histPbv)
+      setFairValue(`Rp ${fvNumber.toLocaleString('id-ID')}`)
+      
+      // Target Harga diasumsikan pada +1 standard deviation PBV (contoh: 1.15x dari Fair Value)
+      const tpNumber = Math.round(fvNumber * 1.15)
+      setTargetHarga(`Rp ${tpNumber.toLocaleString('id-ID')}`)
+    }
+
+    // 9. Margin of Safety (MoS)
+    if (fvNumber !== null && !isNaN(price) && price > 0) {
+      const mosVal = ((fvNumber - price) / fvNumber) * 100
+      const sign = mosVal > 0 ? '+' : ''
+      setMos(`${sign}${mosVal.toFixed(1)}%`)
+    }
+
+    // 10. Dividend Yield Est.
+    if (epsAnnual !== null && !isNaN(dprVal) && !isNaN(price) && price > 0) {
+      const estDps = epsAnnual * (dprVal / 100)
+      const yieldVal = (estDps / price) * 100
+      setDividenYield(`${yieldVal.toFixed(2)}%`)
+    }
   }
+
+  useEffect(() => {
+    autoCalculateRatios(
+      rawLiabilitas,
+      rawEkuitas,
+      rawLabaSekarang,
+      rawLabaLalu,
+      rawRevSekarang,
+      rawRevLalu,
+      kuartal,
+      rawHargaSaham,
+      rawLembarSaham,
+      rawMeanPbv,
+      rawDpr
+    )
+  }, [
+    rawLiabilitas,
+    rawEkuitas,
+    rawLabaSekarang,
+    rawLabaLalu,
+    rawRevSekarang,
+    rawRevLalu,
+    kuartal,
+    rawHargaSaham,
+    rawLembarSaham,
+    rawMeanPbv,
+    rawDpr,
+  ])
 
   const handleAddBlok = () => {
     setCatatanRiset([...catatanRiset, { paragraf: '', gambar_lapkeu: [] }])
@@ -174,6 +280,16 @@ export default function JournalForm({ editingRow, onDone, onCancel }) {
         casa: casa,
         nim: nim,
         npl_gross: nplGross,
+        raw_liabilitas: rawLiabilitas,
+        raw_ekuitas: rawEkuitas,
+        raw_laba_sekarang: rawLabaSekarang,
+        raw_laba_lalu: rawLabaLalu,
+        raw_rev_sekarang: rawRevSekarang,
+        raw_rev_lalu: rawRevLalu,
+        raw_harga_saham: rawHargaSaham,
+        raw_lembar_saham: rawLembarSaham,
+        raw_mean_pbv: rawMeanPbv,
+        raw_dpr: rawDpr,
       },
       referensi: referensi.filter((r) => r.url.trim() !== ''),
       catatan_riset: catatanRiset.filter((c) => c.paragraf.trim() !== '' || c.gambar_lapkeu.length > 0),
@@ -263,6 +379,7 @@ export default function JournalForm({ editingRow, onDone, onCancel }) {
         </div>
 
         <form onSubmit={handleSubmit}>
+
           {/* Section 1: Info Umum */}
           <div style={cardSectionStyle}>
             <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '0.8rem' }}>
@@ -356,13 +473,9 @@ export default function JournalForm({ editingRow, onDone, onCancel }) {
                 <input
                   type="number"
                   step="any"
-                  placeholder="2234540"
+                  placeholder="Contoh: 1904771578"
                   value={rawLiabilitas}
-                  onChange={(e) => {
-                    const v = e.target.value
-                    setRawLiabilitas(v)
-                    autoCalculateRatios(v, rawEkuitas, rawLabaSekarang, rawLabaLalu, kuartal)
-                  }}
+                  onChange={(e) => setRawLiabilitas(e.target.value)}
                   style={inputStyle}
                 />
               </div>
@@ -374,13 +487,9 @@ export default function JournalForm({ editingRow, onDone, onCancel }) {
                 <input
                   type="number"
                   step="any"
-                  placeholder="293020"
+                  placeholder="Contoh: 345062054"
                   value={rawEkuitas}
-                  onChange={(e) => {
-                    const v = e.target.value
-                    setRawEkuitas(v)
-                    autoCalculateRatios(rawLiabilitas, v, rawLabaSekarang, rawLabaLalu, kuartal)
-                  }}
+                  onChange={(e) => setRawEkuitas(e.target.value)}
                   style={inputStyle}
                 />
               </div>
@@ -392,13 +501,9 @@ export default function JournalForm({ editingRow, onDone, onCancel }) {
                 <input
                   type="number"
                   step="any"
-                  placeholder="30412"
+                  placeholder="Contoh: 15492710"
                   value={rawLabaSekarang}
-                  onChange={(e) => {
-                    const v = e.target.value
-                    setRawLabaSekarang(v)
-                    autoCalculateRatios(rawLiabilitas, rawEkuitas, v, rawLabaLalu, kuartal)
-                  }}
+                  onChange={(e) => setRawLabaSekarang(e.target.value)}
                   style={inputStyle}
                 />
               </div>
@@ -410,13 +515,93 @@ export default function JournalForm({ editingRow, onDone, onCancel }) {
                 <input
                   type="number"
                   step="any"
-                  placeholder="24455"
+                  placeholder="Contoh: 13621548"
                   value={rawLabaLalu}
-                  onChange={(e) => {
-                    const v = e.target.value
-                    setRawLabaLalu(v)
-                    autoCalculateRatios(rawLiabilitas, rawEkuitas, rawLabaSekarang, v, kuartal)
-                  }}
+                  onChange={(e) => setRawLabaLalu(e.target.value)}
+                  style={inputStyle}
+                />
+              </div>
+
+              <div className="form-group">
+                <label style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'block', marginBottom: '0.3rem' }}>
+                  Revenue (Periode Ini)
+                </label>
+                <input
+                  type="number"
+                  step="any"
+                  placeholder="Contoh: 45000000"
+                  value={rawRevSekarang}
+                  onChange={(e) => setRawRevSekarang(e.target.value)}
+                  style={inputStyle}
+                />
+              </div>
+
+              <div className="form-group">
+                <label style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'block', marginBottom: '0.3rem' }}>
+                  Revenue (Tahun Lalu)
+                </label>
+                <input
+                  type="number"
+                  step="any"
+                  placeholder="Contoh: 40000000"
+                  value={rawRevLalu}
+                  onChange={(e) => setRawRevLalu(e.target.value)}
+                  style={inputStyle}
+                />
+              </div>
+
+              <div className="form-group">
+                <label style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'block', marginBottom: '0.3rem' }}>
+                  Harga Saham Saat Ini (P)
+                </label>
+                <input
+                  type="number"
+                  step="any"
+                  placeholder="Contoh: 5200"
+                  value={rawHargaSaham}
+                  onChange={(e) => setRawHargaSaham(e.target.value)}
+                  style={inputStyle}
+                />
+              </div>
+
+              <div className="form-group">
+                <label style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'block', marginBottom: '0.3rem' }}>
+                  Total Lembar Saham Beredar
+                </label>
+                <input
+                  type="number"
+                  step="any"
+                  placeholder="Contoh: 151559000000"
+                  value={rawLembarSaham}
+                  onChange={(e) => setRawLembarSaham(e.target.value)}
+                  style={inputStyle}
+                />
+              </div>
+
+              <div className="form-group">
+                <label style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'block', marginBottom: '0.3rem' }}>
+                  Mean PBV Historis (Wajar)
+                </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  placeholder="Misal: 2.1 (cek PBV Band)"
+                  value={rawMeanPbv}
+                  onChange={(e) => setRawMeanPbv(e.target.value)}
+                  style={inputStyle}
+                />
+              </div>
+
+              <div className="form-group">
+                <label style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'block', marginBottom: '0.3rem' }}>
+                  Estimasi DPR (%)
+                </label>
+                <input
+                  type="number"
+                  step="any"
+                  placeholder="Misal: 70 (cek historis DPR)"
+                  value={rawDpr}
+                  onChange={(e) => setRawDpr(e.target.value)}
                   style={inputStyle}
                 />
               </div>
@@ -472,10 +657,30 @@ export default function JournalForm({ editingRow, onDone, onCancel }) {
 
               <div className="form-group">
                 <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--ink)', display: 'block', marginBottom: '0.2rem' }}>
-                  PER / PBV
-                  <span style={{ display: 'block', fontSize: '0.68rem', color: '#94a3b8', fontWeight: 400 }}>Harga / EPS | Harga / BVPS</span>
+                  PER (Price to Earnings)
+                  <span style={{ display: 'block', fontSize: '0.68rem', color: '#94a3b8', fontWeight: 400 }}>Harga / EPS</span>
                 </label>
-                <input type="text" placeholder="PER 8.5x | PBV 1.2x" value={per} onChange={(e) => setPer(e.target.value)} style={inputStyle} />
+                <input
+                  type="text"
+                  placeholder="8.5x"
+                  value={per}
+                  onChange={(e) => setPer(e.target.value)}
+                  style={inputStyle}
+                />
+              </div>
+
+              <div className="form-group">
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--ink)', display: 'block', marginBottom: '0.2rem' }}>
+                  PBV (Price to Book Value)
+                  <span style={{ display: 'block', fontSize: '0.68rem', color: '#94a3b8', fontWeight: 400 }}>Harga / BVPS</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="1.2x"
+                  value={pbv}
+                  onChange={(e) => setPbv(e.target.value)}
+                  style={inputStyle}
+                />
               </div>
 
               <div className="form-group">
