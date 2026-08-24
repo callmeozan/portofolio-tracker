@@ -43,6 +43,8 @@ export default function JournalForm({ editingRow, onDone, onCancel }) {
   const [rawLembarSaham, setRawLembarSaham] = useState(editingRow?.metrik?.raw_lembar_saham || '')
   const [rawMeanPbv, setRawMeanPbv] = useState(editingRow?.metrik?.raw_mean_pbv || '')
   const [rawDpr, setRawDpr] = useState(editingRow?.metrik?.raw_dpr || '')
+  const [currency, setCurrency] = useState(editingRow?.metrik?.raw_currency || 'IDR')
+  const [kurs, setKurs] = useState(editingRow?.metrik?.raw_kurs || '16200')
 
   // Referensi & Catatan Riset
   const [referensi, setReferensi] = useState(
@@ -63,6 +65,14 @@ export default function JournalForm({ editingRow, onDone, onCancel }) {
     const totalShares = parseFloat(shares)
     const histPbv = parseFloat(meanPbv)
     const dprVal = parseFloat(dpr)
+
+    // 1. Tentukan pengali berdasarkan mata uang
+    const kursVal = currency === 'USD' ? (parseFloat(kurs) || 16200) : 1
+    const multiplierSatuan = currency === 'USD' ? 1 : 1000000
+
+    // 2. Konversi Ekuitas & Laba ke Rupiah Penuh untuk perhitungan valuasi pasar
+    const ekuIDR = e * multiplierSatuan * kursVal
+    const labaIndukIDR = lp * multiplierSatuan * kursVal
 
     // Tentukan Multiplier Annualized berdasarkan Kuartal
     let multiplier = 1
@@ -105,8 +115,8 @@ export default function JournalForm({ editingRow, onDone, onCancel }) {
     let bvps = null
     let epsAnnual = null
     if (!isNaN(totalShares) && totalShares !== 0) {
-      if (!isNaN(e)) bvps = (e * 1000000) / totalShares
-      if (!isNaN(lp)) epsAnnual = ((lp * 1000000) * multiplier) / totalShares
+      if (!isNaN(ekuIDR)) bvps = ekuIDR / totalShares
+      if (!isNaN(labaIndukIDR)) epsAnnual = (labaIndukIDR * multiplier) / totalShares
     }
 
     // 7. PER & PBV
@@ -177,6 +187,8 @@ export default function JournalForm({ editingRow, onDone, onCancel }) {
     rawLembarSaham,
     rawMeanPbv,
     rawDpr,
+    currency,
+    kurs,
   ])
 
   const handleAddBlok = () => {
@@ -456,15 +468,57 @@ export default function JournalForm({ editingRow, onDone, onCancel }) {
               border: '1px dashed rgba(56, 189, 248, 0.3)',
             }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.8rem', flexWrap: 'wrap', gap: '0.4rem' }}>
-              <strong style={{ fontSize: '0.88rem', color: '#38bdf8', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                ⚡ Auto-Calculate dari Angka Mentah Lapkeu
-              </strong>
-              <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
-                Ketik langsung angka dari PDF (tanpa titik ribuan)
-              </span>
+            {/* Header Section dengan Kontrol Mata Uang */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.6rem' }}>
+              <div>
+                <strong style={{ fontSize: '0.88rem', color: '#38bdf8', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  ⚡ Auto-Calculate dari Angka Mentah Lapkeu
+                </strong>
+                <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                  {currency === 'USD' 
+                    ? 'Ketik angka penuh USD dari PDF (tanpa titik koma)' 
+                    : 'Ketik langsung angka mentah jutaan dari PDF (tanpa titik ribuan)'}
+                </span>
+              </div>
+
+              {/* Dropdown Mata Uang & Input Kurs USD */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <select
+                  value={currency}
+                  onChange={(e) => setCurrency(e.target.value)}
+                  style={{
+                    ...inputStyle,
+                    width: 'auto',
+                    padding: '0.3rem 0.6rem',
+                    fontSize: '0.75rem',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <option value="IDR">🇮🇩 IDR (Jutaan)</option>
+                  <option value="USD">🇺🇸 USD (Penuh)</option>
+                </select>
+
+                {currency === 'USD' && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                    <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Kurs:</span>
+                    <input
+                      type="number"
+                      value={kurs}
+                      onChange={(e) => setKurs(e.target.value)}
+                      placeholder="16200"
+                      style={{
+                        ...inputStyle,
+                        width: '85px',
+                        padding: '0.3rem 0.5rem',
+                        fontSize: '0.75rem',
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
             </div>
 
+            {/* Form Grid Input */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.85rem' }}>
               <div className="form-group">
                 <label style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'block', marginBottom: '0.3rem' }}>
@@ -473,7 +527,7 @@ export default function JournalForm({ editingRow, onDone, onCancel }) {
                 <input
                   type="number"
                   step="any"
-                  placeholder="Contoh: 1904771578"
+                  placeholder={currency === 'USD' ? 'Contoh: 318000000' : 'Contoh: 1904771578'}
                   value={rawLiabilitas}
                   onChange={(e) => setRawLiabilitas(e.target.value)}
                   style={inputStyle}
@@ -487,7 +541,7 @@ export default function JournalForm({ editingRow, onDone, onCancel }) {
                 <input
                   type="number"
                   step="any"
-                  placeholder="Contoh: 345062054"
+                  placeholder={currency === 'USD' ? 'Contoh: 650000000' : 'Contoh: 345062054'}
                   value={rawEkuitas}
                   onChange={(e) => setRawEkuitas(e.target.value)}
                   style={inputStyle}
@@ -501,7 +555,7 @@ export default function JournalForm({ editingRow, onDone, onCancel }) {
                 <input
                   type="number"
                   step="any"
-                  placeholder="Contoh: 15492710"
+                  placeholder={currency === 'USD' ? 'Contoh: 42000000' : 'Contoh: 15492710'}
                   value={rawLabaSekarang}
                   onChange={(e) => setRawLabaSekarang(e.target.value)}
                   style={inputStyle}
@@ -515,7 +569,7 @@ export default function JournalForm({ editingRow, onDone, onCancel }) {
                 <input
                   type="number"
                   step="any"
-                  placeholder="Contoh: 13621548"
+                  placeholder={currency === 'USD' ? 'Contoh: 38000000' : 'Contoh: 13621548'}
                   value={rawLabaLalu}
                   onChange={(e) => setRawLabaLalu(e.target.value)}
                   style={inputStyle}
@@ -529,7 +583,7 @@ export default function JournalForm({ editingRow, onDone, onCancel }) {
                 <input
                   type="number"
                   step="any"
-                  placeholder="Contoh: 45000000"
+                  placeholder="Revenue periode berjalan"
                   value={rawRevSekarang}
                   onChange={(e) => setRawRevSekarang(e.target.value)}
                   style={inputStyle}
@@ -543,7 +597,7 @@ export default function JournalForm({ editingRow, onDone, onCancel }) {
                 <input
                   type="number"
                   step="any"
-                  placeholder="Contoh: 40000000"
+                  placeholder="Revenue periode lalu"
                   value={rawRevLalu}
                   onChange={(e) => setRawRevLalu(e.target.value)}
                   style={inputStyle}
@@ -557,7 +611,7 @@ export default function JournalForm({ editingRow, onDone, onCancel }) {
                 <input
                   type="number"
                   step="any"
-                  placeholder="Contoh: 5200"
+                  placeholder="Harga pasar IDR"
                   value={rawHargaSaham}
                   onChange={(e) => setRawHargaSaham(e.target.value)}
                   style={inputStyle}
@@ -571,7 +625,7 @@ export default function JournalForm({ editingRow, onDone, onCancel }) {
                 <input
                   type="number"
                   step="any"
-                  placeholder="Contoh: 151559000000"
+                  placeholder="Jumlah lembar disetor"
                   value={rawLembarSaham}
                   onChange={(e) => setRawLembarSaham(e.target.value)}
                   style={inputStyle}
@@ -584,8 +638,8 @@ export default function JournalForm({ editingRow, onDone, onCancel }) {
                 </label>
                 <input
                   type="number"
-                  step="0.1"
-                  placeholder="Misal: 2.1 (cek PBV Band)"
+                  step="0.01"
+                  placeholder="Misal: 1.1 (cek PBV Band)"
                   value={rawMeanPbv}
                   onChange={(e) => setRawMeanPbv(e.target.value)}
                   style={inputStyle}
@@ -599,7 +653,7 @@ export default function JournalForm({ editingRow, onDone, onCancel }) {
                 <input
                   type="number"
                   step="any"
-                  placeholder="Misal: 70 (cek historis DPR)"
+                  placeholder="Misal: 60 (cek historis DPR)"
                   value={rawDpr}
                   onChange={(e) => setRawDpr(e.target.value)}
                   style={inputStyle}
