@@ -191,6 +191,13 @@ export default function JournalForm({ editingRow, onDone, onCancel }) {
     kurs,
   ])
 
+  useEffect(() => {
+  if (editingRow) {
+    setCurrency(editingRow?.metrik?.raw_currency || 'IDR')
+    setKurs(editingRow?.metrik?.raw_kurs || '16200')
+  }
+}, [editingRow])
+
   const handleAddBlok = () => {
     setCatatanRiset([...catatanRiset, { paragraf: '', gambar_lapkeu: [] }])
   }
@@ -302,6 +309,8 @@ export default function JournalForm({ editingRow, onDone, onCancel }) {
         raw_lembar_saham: rawLembarSaham,
         raw_mean_pbv: rawMeanPbv,
         raw_dpr: rawDpr,
+        raw_currency: currency,
+        raw_kurs: kurs
       },
       referensi: referensi.filter((r) => r.url.trim() !== ''),
       catatan_riset: catatanRiset.filter((c) => c.paragraf.trim() !== '' || c.gambar_lapkeu.length > 0),
