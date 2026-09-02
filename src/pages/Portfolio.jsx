@@ -253,37 +253,37 @@ function ConfirmModal({ isOpen, title, message, onConfirm, onCancel }) {
     return <div className="page"><p className="empty">Memuat...</p></div>
   }
 
-  if (!isMember) {
-    return (
-      <div className="page">
-        <div className="gate-overlay">
-          <div className="gate-card">
-            <div className="icon">🔒</div>
-            <h2>Khusus Faozan</h2>
-            <p>
-              Portofolio Palsu ini eksklusif untuk Faozan dan hanya orang yang diberi akses khusus untuk melihat Portfolio Palsu ini.
-            </p>
-            <form onSubmit={handleMemberLogin}>
-              <input
-                type="text"
-                autoFocus
-                placeholder="Password bulan ini"
-                value={memberPassword}
-                onChange={(e) => { setMemberPassword(e.target.value); setMemberLoginError(null) }}
-                className={`${memberLoginError ? 'input-error' : ''} ${memberShake ? 'input-shake' : ''}`}
-              />
-              <button className="gate-btn" type="submit" disabled={memberLoggingIn}>
-                {memberLoggingIn ? 'Cek...' : 'Buka Halaman'}
-              </button>
-            </form>
-            <div className="gate-hint">
-              Mau tahu passwordnya? Tanya Faozan langsung. Jangan share ke orang lain.
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
+  // if (!isMember) {
+  //   return (
+  //     <div className="page">
+  //       <div className="gate-overlay">
+  //         <div className="gate-card">
+  //           <div className="icon">🔒</div>
+  //           <h2>Khusus Faozan</h2>
+  //           <p>
+  //             Portofolio Palsu ini eksklusif untuk Faozan dan hanya orang yang diberi akses khusus untuk melihat Portfolio Palsu ini.
+  //           </p>
+  //           <form onSubmit={handleMemberLogin}>
+  //             <input
+  //               type="text"
+  //               autoFocus
+  //               placeholder="Password bulan ini"
+  //               value={memberPassword}
+  //               onChange={(e) => { setMemberPassword(e.target.value); setMemberLoginError(null) }}
+  //               className={`${memberLoginError ? 'input-error' : ''} ${memberShake ? 'input-shake' : ''}`}
+  //             />
+  //             <button className="gate-btn" type="submit" disabled={memberLoggingIn}>
+  //               {memberLoggingIn ? 'Cek...' : 'Buka Halaman'}
+  //             </button>
+  //           </form>
+  //           <div className="gate-hint">
+  //             Mau tahu passwordnya? Tanya Faozan langsung. Jangan share ke orang lain.
+  //           </div>
+  //         </div>
+  //       </div>
+  //     </div>
+  //   )
+  // }
 
   // ============================================================
   // KONTEN (cuma sampe sini kalau udah lolos gate)
@@ -298,6 +298,7 @@ function ConfirmModal({ isOpen, title, message, onConfirm, onCancel }) {
 
   return (
     <div className="page" style={{ position: 'relative' }}>
+      <div className={!isMember ? 'content-blurred' : ''}>
 
       <ConfirmModal
         isOpen={deleteTarget !== null}
@@ -784,6 +785,36 @@ function ConfirmModal({ isOpen, title, message, onConfirm, onCancel }) {
         <span>Portofolio Palsu — dibentuk untuk tujuan edukasi. Bukan rekomendasi beli/jual.</span>
         <span>Data hanya bisa diubah oleh Faozan.</span>
       </footer>
+    </div>
+
+    {!isMember && (
+        <div className="gate-overlay">
+          <div className="gate-card">
+            <div className="icon">🔒</div>
+            <h2>Khusus Faozan</h2>
+            <p>
+              Portofolio Palsu ini eksklusif untuk Faozan dan hanya orang yang diberi akses khusus untuk melihat Portfolio Palsu ini.
+            </p>
+            <form onSubmit={handleMemberLogin}>
+              <input
+                type="text"
+                autoFocus
+                placeholder="Password bulan ini"
+                value={memberPassword}
+                onChange={(e) => { setMemberPassword(e.target.value); setMemberLoginError(null) }}
+                className={`${memberLoginError ? 'input-error' : ''} ${memberShake ? 'input-shake' : ''}`}
+              />
+              <button className="gate-btn" type="submit" disabled={memberLoggingIn}>
+                {memberLoggingIn ? 'Cek...' : 'Buka Halaman'}
+              </button>
+            </form>
+            <div className="gate-hint">
+              Mau tahu passwordnya? Tanya Faozan langsung. Jangan share ke orang lain.
+            </div>
+          </div>
+        </div>
+      )}
+      
     </div>
   )
 }

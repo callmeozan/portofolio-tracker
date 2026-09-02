@@ -656,3 +656,24 @@ footer.pp-footer {
   border-color: rgba(255, 82, 82, 0.35);
   text-shadow: 0 0 8px rgba(255, 82, 82, 0.4);
 }
+
+/* Efek blur pada tabel/portofolio di belakang */
+.content-blurred {
+  filter: blur(8px);
+  pointer-events: none; /* User tidak bisa klik/interaksi */
+  user-select: none;    /* User tidak bisa seleksi teks */
+}
+
+/* Overlay transparan di atas konten blur */
+.gate-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.4); /* Hitam transparan agar konten blur di belakang tetap tembus pandang */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
