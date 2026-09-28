@@ -941,112 +941,125 @@ export default function Portfolio() {
         const lastTx = tickerHistory[tickerHistory.length - 1]
         const prevTx = tickerHistory[tickerHistory.length - 2]
         
-        let priceDiffPct = null
+        // 1. Tren vs Pembelian Sebelumnya
+        let prevDiffPct = null
         if (lastTx && prevTx && Number(prevTx.harga_beli) > 0) {
-          priceDiffPct = ((Number(lastTx.harga_beli) - Number(prevTx.harga_beli)) / Number(prevTx.harga_beli)) * 100
+          prevDiffPct = ((Number(lastTx.harga_beli) - Number(prevTx.harga_beli)) / Number(prevTx.harga_beli)) * 100
         }
 
-        // Kalkulasi Total Lot, Total Beli, dan Avg Buy DCA
+        // Kalkulasi Akumulasi & Avg Buy
         const totalLot = tickerHistory.reduce((sum, item) => sum + Number(item.jumlah_lot), 0)
         const totalInvestasi = tickerHistory.reduce((sum, item) => sum + Number(item.total_investasi), 0)
         const avgBuy = totalLot > 0 ? Math.round(totalInvestasi / (totalLot * 100)) : 0
 
+        // 2. Tren vs Avg Buy Keseluruhan
+        let avgDiffPct = null
+        if (lastTx && avgBuy > 0) {
+          avgDiffPct = ((Number(lastTx.harga_beli) - avgBuy) / avgBuy) * 100
+        }
+
         return (
-          <div className="gate-overlay" onClick={() => { setSelectedHistory(null); handleCancelEdit(); }}>
+          <div 
+            className="gate-overlay" 
+            onClick={() => { setSelectedHistory(null); handleCancelEdit(); }}
+            style={{
+              position: 'fixed',
+              top: 0, left: 0, right: 0, bottom: 0,
+              backgroundColor: 'rgba(0,0,0,0.6)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 9999,
+              padding: '12px'
+            }}
+          >
             <div 
               className="gate-card" 
               style={{ 
-                maxWidth: '780px', 
-                width: '90%', 
-                padding: '24px', 
-                borderRadius: '12px',
-                boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)' 
+                maxWidth: '720px', 
+                width: '100%', 
+                maxHeight: '90vh',
+                overflowY: 'auto',
+                padding: '20px', 
+                borderRadius: '16px',
+                backgroundColor: '#ffffff',
+                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)' 
               }} 
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header Modal */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid #f0f0f0', paddingBottom: '12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px', borderBottom: '1px solid #f1f5f9', paddingBottom: '12px' }}>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>
+                  <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: '#0f172a' }}>
                     DCA Tracker: <span style={{ color: '#2563eb' }}>{currentTicker}</span>
                   </h3>
-                  <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: '#6b7280' }}>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '0.78rem', color: '#64748b' }}>
                     Riwayat akumulasi lot & efisiensi alokasi budget
                   </p>
                 </div>
                 <button 
                   onClick={() => { setSelectedHistory(null); handleCancelEdit(); }}
-                  style={{ fontSize: '1rem', color: '#6b7280', cursor: 'pointer', background: 'none', border: 'none' }}
+                  style={{ fontSize: '1rem', color: '#64748b', cursor: 'pointer', background: 'none', border: 'none', padding: '4px' }}
                 >
-                  ✕ Tutup
+                  ✕
                 </button>
               </div>
 
-              {/* Ringkasan Analisa DCA Terkini */}
-              {lastTx && (() => {
-                // 1. Tren vs Pembelian Persis Sebelum Ini
-                let prevDiffPct = null
-                if (prevTx && Number(prevTx.harga_beli) > 0) {
-                  prevDiffPct = ((Number(lastTx.harga_beli) - Number(prevTx.harga_beli)) / Number(prevTx.harga_beli)) * 100
-                }
-
-                // 2. Tren vs Avg Buy Keseluruhan (Momen Averaging Down)
-                let avgDiffPct = null
-                if (avgBuy > 0) {
-                  avgDiffPct = ((Number(lastTx.harga_beli) - avgBuy) / avgBuy) * 100
-                }
-
-                return (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '10px', marginBottom: '16px', background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                    <div>
-                      <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block' }}>Beli Terakhir</span>
-                      <strong style={{ fontSize: '0.88rem', color: '#0f172a' }}>{formatRp(lastTx.harga_beli)}</strong>
-                    </div>
-
-                    <div>
-                      <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block' }}>vs Beli Sebelumnya</span>
-                      {prevDiffPct !== null ? (
-                        <strong 
-                          style={{ 
-                            fontSize: '0.88rem', 
-                            color: prevDiffPct > 0 ? '#dc2626' : prevDiffPct < 0 ? '#16a34a' : '#6b7280' 
-                          }}
-                        >
-                          {prevDiffPct > 0 
-                            ? `▲ +${prevDiffPct.toFixed(1)}%` 
-                            : prevDiffPct < 0 
-                            ? `▼ ${prevDiffPct.toFixed(1)}%` 
-                            : '0.0%'}
-                        </strong>
-                      ) : (
-                        <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>-</span>
-                      )}
-                    </div>
-
-                    <div>
-                      <span style={{ fontSize: '0.72rem', color: '#2563eb', fontWeight: 600, display: 'block' }}>vs Avg Buy (DCA)</span>
-                      {avgDiffPct !== null ? (
-                        <strong style={{ fontSize: '0.88rem', color: avgDiffPct <= 0 ? '#16a34a' : '#ea580c' }}>
-                          {avgDiffPct <= 0 ? `Diskon ${Math.abs(avgDiffPct).toFixed(1)}%` : `+${avgDiffPct.toFixed(1)}%`}
-                        </strong>
-                      ) : (
-                        <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>-</span>
-                      )}
-                    </div>
-
-                    <div>
-                      <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block' }}>Avg Buy / Akumulasi</span>
-                      <strong style={{ fontSize: '0.88rem', color: '#0f172a' }}>{formatRp(avgBuy)} <span style={{ fontSize: '0.75rem', fontWeight: 400, color: '#6b7280' }}>({totalLot} Lot)</span></strong>
-                    </div>
+              {/* Ringkasan Analisa DCA Terkini (Grid 2 Kolom di Mobile, 4 Kolom di Desktop) */}
+              {lastTx && (
+                <div 
+                  style={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', 
+                    gap: '8px', 
+                    marginBottom: '14px', 
+                    background: '#f8fafc', 
+                    padding: '10px 12px', 
+                    borderRadius: '10px', 
+                    border: '1px solid #e2e8f0' 
+                  }}
+                >
+                  <div>
+                    <span style={{ fontSize: '0.68rem', color: '#64748b', display: 'block', fontWeight: 500 }}>Beli Terakhir</span>
+                    <strong style={{ fontSize: '0.85rem', color: '#0f172a' }}>{formatRp(lastTx.harga_beli)}</strong>
                   </div>
-                )
-              })()}
 
-              {/* Tabel List Riwayat Pembelian (Clean Without Side Scroll) */}
-              <div style={{ maxHeight: '250px', overflowY: 'auto', overflowX: 'hidden', marginBottom: isAdmin ? '20px' : '8px', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-                <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+                  <div>
+                    <span style={{ fontSize: '0.68rem', color: '#64748b', display: 'block', fontWeight: 500 }}>vs Beli Lalu</span>
+                    {prevDiffPct !== null ? (
+                      <strong style={{ fontSize: '0.85rem', color: prevDiffPct > 0 ? '#dc2626' : prevDiffPct < 0 ? '#16a34a' : '#6b7280' }}>
+                        {prevDiffPct > 0 ? `▲ +${prevDiffPct.toFixed(1)}%` : prevDiffPct < 0 ? `▼ ${prevDiffPct.toFixed(1)}%` : '0.0%'}
+                      </strong>
+                    ) : (
+                      <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>-</span>
+                    )}
+                  </div>
+
+                  <div>
+                    <span style={{ fontSize: '0.68rem', color: '#2563eb', fontWeight: 600, display: 'block' }}>vs Avg Buy</span>
+                    {avgDiffPct !== null ? (
+                      <strong style={{ fontSize: '0.85rem', color: avgDiffPct <= 0 ? '#16a34a' : '#ea580c' }}>
+                        {avgDiffPct <= 0 ? `Diskon ${Math.abs(avgDiffPct).toFixed(1)}%` : `+${avgDiffPct.toFixed(1)}%`}
+                      </strong>
+                    ) : (
+                      <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>-</span>
+                    )}
+                  </div>
+
+                  <div>
+                    <span style={{ fontSize: '0.68rem', color: '#64748b', display: 'block', fontWeight: 500 }}>Avg Buy / Accum</span>
+                    <strong style={{ fontSize: '0.85rem', color: '#0f172a' }}>
+                      {formatRp(avgBuy)} <span style={{ fontSize: '0.72rem', fontWeight: 400, color: '#64748b' }}>({totalLot} Lot)</span>
+                    </strong>
+                  </div>
+                </div>
+              )}
+
+              {/* Tabel List Riwayat Pembelian (Horizontal Scrollable) */}
+              <div style={{ width: '100%', overflowX: 'auto', marginBottom: isAdmin ? '16px' : '8px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                <table style={{ width: '100%', minWidth: '580px', textAlign: 'left', borderCollapse: 'collapse', fontSize: '0.78rem' }}>
                   <thead>
-                    <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb', color: '#374151', textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.05em' }}>
+                    <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569', textTransform: 'uppercase', fontSize: '0.68rem', letterSpacing: '0.03em' }}>
                       <th style={{ padding: '8px 10px' }}>Tanggal</th>
                       <th style={{ padding: '8px 10px', textAlign: 'right' }}>Budget</th>
                       <th style={{ padding: '8px 10px', textAlign: 'right' }}>Harga Beli</th>
@@ -1064,28 +1077,30 @@ export default function Portfolio() {
                       const sisa = modal - total
 
                       return (
-                        <tr key={idx} style={{ borderBottom: '1px solid #f3f4f6', backgroundColor: editingId === tx.id ? '#f0f9ff' : 'transparent' }}>
-                          <td style={{ padding: '8px 10px', color: '#111827' }}>{tx.tanggal_beli}</td>
-                          <td style={{ padding: '8px 10px', textAlign: 'right', color: '#6b7280' }}>{formatRp(modal)}</td>
-                          <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 500 }}>{formatRp(tx.harga_beli)}</td>
-                          <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 600 }}>{tx.jumlah_lot}</td>
-                          <td style={{ padding: '8px 10px', textAlign: 'right', color: '#059669', fontWeight: 500 }}>{formatRp(total)}</td>
-                          <td style={{ padding: '8px 10px', textAlign: 'right', color: sisa > 0 ? '#2563eb' : '#9ca3af' }}>
+                        <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9', backgroundColor: editingId === tx.id ? '#eff6ff' : 'transparent' }}>
+                          <td style={{ padding: '8px 10px', color: '#0f172a', whiteSpace: 'nowrap' }}>{tx.tanggal_beli}</td>
+                          <td style={{ padding: '8px 10px', textAlign: 'right', color: '#64748b', whiteSpace: 'nowrap' }}>{formatRp(modal)}</td>
+                          <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 600, whiteSpace: 'nowrap' }}>{formatRp(tx.harga_beli)}</td>
+                          <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700, color: '#0284c7' }}>{tx.jumlah_lot}</td>
+                          <td style={{ padding: '8px 10px', textAlign: 'right', color: '#16a34a', fontWeight: 600, whiteSpace: 'nowrap' }}>{formatRp(total)}</td>
+                          <td style={{ padding: '8px 10px', textAlign: 'right', color: sisa > 0 ? '#2563eb' : '#94a3b8', whiteSpace: 'nowrap' }}>
                             {sisa > 0 ? formatRp(sisa) : 'Rp0'}
                           </td>
-                          <td style={{ padding: '8px 10px', color: '#6b7280', fontSize: '0.8rem' }}>{tx.catatan || '-'}</td>
+                          <td style={{ padding: '8px 10px', color: '#64748b', fontSize: '0.75rem', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {tx.catatan || '-'}
+                          </td>
                           {isAdmin && (
-                            <td style={{ padding: '8px 10px', textAlign: 'center' }}>
+                            <td style={{ padding: '8px 10px', textAlign: 'center', whiteSpace: 'nowrap' }}>
                               <button
                                 onClick={() => handleStartEdit(tx)}
-                                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8rem', marginRight: '4px' }}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.85rem', marginRight: '6px' }}
                                 title="Edit Transaksi"
                               >
                                 ✏️
                               </button>
                               <button
                                 onClick={() => triggerDeleteBuy(tx.id)}
-                                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8rem' }}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.85rem' }}
                                 title="Hapus Transaksi"
                               >
                                 🗑️
@@ -1098,7 +1113,7 @@ export default function Portfolio() {
 
                     {tickerHistory.length === 0 && (
                       <tr>
-                        <td colSpan={isAdmin ? 8 : 7} style={{ textAlign: 'center', padding: '24px', color: '#9ca3af' }}>
+                        <td colSpan={isAdmin ? 8 : 7} style={{ textAlign: 'center', padding: '20px', color: '#94a3b8' }}>
                           Belum ada riwayat DCA untuk emiten ini.
                         </td>
                       </tr>
@@ -1107,11 +1122,11 @@ export default function Portfolio() {
                 </table>
               </div>
 
-              {/* Form Tambah/Edit Transaksi (Khusus Admin) */}
+              {/* Form Tambah/Edit Transaksi (Khusus Admin) - Responsif 2/3 Kolom */}
               {isAdmin && (
-                <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '14px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                    <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600, color: editingId ? '#2563eb' : '#111827' }}>
+                <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '12px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <h4 style={{ margin: 0, fontSize: '0.85rem', fontWeight: 600, color: editingId ? '#2563eb' : '#0f172a' }}>
                       {editingId ? '✏️ Edit Transaksi DCA' : '+ Input DCA Bulan Ini'}
                     </h4>
                     {editingId && (
@@ -1124,79 +1139,80 @@ export default function Portfolio() {
                     )}
                   </div>
 
-                  <form onSubmit={handleSubmitBuy} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+                  <form onSubmit={handleSubmitBuy} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '8px' }}>
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 500, color: '#374151', marginBottom: '2px' }}>Tanggal Beli</label>
+                      <label style={{ display: 'block', fontSize: '0.68rem', fontWeight: 500, color: '#475569', marginBottom: '2px' }}>Tanggal Beli</label>
                       <input
                         type="date"
                         required
                         value={formData.tanggal_beli}
                         onChange={(e) => setFormData({ ...formData, tanggal_beli: e.target.value })}
-                        style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '0.8rem' }}
+                        style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.78rem' }}
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 500, color: '#374151', marginBottom: '2px' }}>Budget DCA (Rp)</label>
+                      <label style={{ display: 'block', fontSize: '0.68rem', fontWeight: 500, color: '#475569', marginBottom: '2px' }}>Budget DCA (Rp)</label>
                       <input
                         type="number"
-                        placeholder="Contoh: 1000000"
+                        placeholder="1000000"
                         value={formData.modal_dca}
                         onChange={(e) => setFormData({ ...formData, modal_dca: e.target.value })}
-                        style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '0.8rem' }}
+                        style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.78rem' }}
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 500, color: '#374151', marginBottom: '2px' }}>Harga Beli (per lembar)</label>
+                      <label style={{ display: 'block', fontSize: '0.68rem', fontWeight: 500, color: '#475569', marginBottom: '2px' }}>Harga Beli (lembar)</label>
                       <input
                         type="number"
                         required
-                        placeholder="Contoh: 3830"
+                        placeholder="3830"
                         value={formData.harga_beli}
                         onChange={(e) => handleLotOrHargaChange('harga_beli', e.target.value)}
-                        style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '0.8rem' }}
+                        style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.78rem' }}
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 500, color: '#374151', marginBottom: '2px' }}>Jumlah Lot</label>
+                      <label style={{ display: 'block', fontSize: '0.68rem', fontWeight: 500, color: '#475569', marginBottom: '2px' }}>Jumlah Lot</label>
                       <input
                         type="number"
                         required
-                        placeholder="Contoh: 1"
+                        placeholder="1"
                         value={formData.jumlah_lot}
                         onChange={(e) => handleLotOrHargaChange('jumlah_lot', e.target.value)}
-                        style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '0.8rem' }}
+                        style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.78rem' }}
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 500, color: '#374151', marginBottom: '2px' }}>Total Beli Riil (inc. Fee)</label>
+                      <label style={{ display: 'block', fontSize: '0.68rem', fontWeight: 500, color: '#475569', marginBottom: '2px' }}>Total Beli (inc. Fee)</label>
                       <input
                         type="number"
                         placeholder="Otomatis / Input Riil"
                         value={formData.total_beli}
                         onChange={(e) => setFormData({ ...formData, total_beli: e.target.value })}
-                        style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '0.8rem', backgroundColor: '#f9fafb' }}
+                        style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.78rem', backgroundColor: '#f8fafc' }}
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 500, color: '#374151', marginBottom: '2px' }}>Catatan</label>
+                      <label style={{ display: 'block', fontSize: '0.68rem', fontWeight: 500, color: '#475569', marginBottom: '2px' }}>Catatan</label>
                       <input
                         type="text"
-                        placeholder="Contoh: DCA Rutin Januari"
+                        placeholder="DCA Rutin Jan"
                         value={formData.catatan}
                         onChange={(e) => setFormData({ ...formData, catatan: e.target.value })}
-                        style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '0.8rem' }}
+                        style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.78rem' }}
                       />
                     </div>
-                    <div style={{ gridColumn: 'span 3', textAlign: 'right', marginTop: '4px' }}>
+                    <div style={{ gridColumn: '1 / -1', textAlign: 'right', marginTop: '4px' }}>
                       <button 
                         type="submit" 
                         style={{ 
+                          width: '100%',
                           padding: '8px 16px', 
-                          backgroundColor: editingId ? '#2563eb' : '#111827', 
+                          backgroundColor: editingId ? '#2563eb' : '#0f172a', 
                           color: '#ffffff', 
-                          borderRadius: '6px', 
+                          borderRadius: '8px', 
                           border: 'none', 
-                          fontWeight: 500, 
+                          fontWeight: 600, 
                           fontSize: '0.8rem', 
                           cursor: 'pointer' 
                         }}
