@@ -30,11 +30,14 @@ export default async function handler(req, res) {
   const settings = s.data ? { ...s.data } : { id: 1, sisa_cash: 0 }
   delete settings.member_password
 
+  const buyHistory = await supabase.from('buy_history').select('*')
+
   return res.status(200).json({
     holdings: h.data,
     closed_positions: c.data,
     dividends: d.data,
     portfolio_settings: settings,
     reactions: r.data,
+    buy_history: buyHistory.data,
   })
 }

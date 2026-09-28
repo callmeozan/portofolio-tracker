@@ -6,7 +6,7 @@ import {
   closedMetrics, dividendMetrics, dividendTotalsByKode,
 } from '../lib/calc'
 import { checkAdminSession, adminLogin, adminLogout, adminMutate } from '../lib/adminApi'
-import { checkMemberSession, memberLogin, memberLogout, fetchPortfolioData } from '../lib/memberApi'
+import { checkMemberSession, memberLogin, memberLogout, fetchPortfolioData, addBuyHistory, updateBuyHistory,deleteBuyHistory } from '../lib/memberApi'
 import AdminRowForm from '../components/AdminRowForm'
 import MemberPasswordForm from '../components/MemberPasswordForm'
 import TickerBadge from '../components/TickerBadge'
@@ -74,6 +74,13 @@ export default function Portfolio() {
   const [showMemberPasswordForm, setShowMemberPasswordForm] = useState(false)
   const [activeTab, setActiveTab] = useState('summary')
 
+  // State untuk menyimpan data emiten yang sedang dipilih untuk lihat riwayat
+  const [selectedHistory, setSelectedHistory] = useState(null);
+  const [buyHistory, setBuyHistory] = useState([])
+  const [statusMessage, setStatusMessage] = useState(null)
+  const [deleteTargetId, setDeleteTargetId] = useState(null)
+  const [editingId, setEditingId] = useState(null)
+
   // { table, row } -- row null berarti form "tambah baru"
   const [formTarget, setFormTarget] = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
@@ -81,8 +88,112 @@ export default function Portfolio() {
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem('theme') || 'light'
   })
-  
 
+  // 1. State untuk menampung input form pembelian
+  const [formData, setFormData] = useState({
+    tanggal_beli: '',
+    jumlah_lot: '',
+    harga_beli: '',
+    modal_dca: '1000000',
+    catatan: ''
+  })
+
+  // Pemicu saat tombol pensil diklik
+  const handleStartEdit = (tx) => {
+    setEditingId(tx.id)
+    setFormData({
+      tanggal_beli: tx.tanggal_beli || '',
+      jumlah_lot: tx.jumlah_lot || '',
+      harga_beli: tx.harga_beli || '',
+      total_beli: tx.total_investasi || '',
+      modal_dca: tx.modal_dca || '1000000',
+      catatan: tx.catatan || ''
+    })
+  }
+
+  // Batal Edit
+  const handleCancelEdit = () => {
+    setEditingId(null)
+    setFormData({
+      tanggal_beli: '',
+      jumlah_lot: '',
+      harga_beli: '',
+      total_beli: '',
+      modal_dca: '1000000',
+      catatan: ''
+    })
+  }
+
+  // 2. Fungsi handleSubmitBuy yang hilang
+  const handleSubmitBuy = async (e) => {
+  e.preventDefault()
+  try {
+    const kode = selectedHistory.kode || selectedHistory.kode_saham
+    const lot = Number(formData.jumlah_lot)
+    const harga = Number(formData.harga_beli)
+    const totalRiil = Number(formData.total_beli) || (lot * 100 * harga)
+    const modal = Number(formData.modal_dca) || totalRiil
+
+    const payload = {
+      kode: kode.toUpperCase(),
+      tanggal_beli: formData.tanggal_beli,
+      jumlah_lot: lot,
+      harga_beli: harga,
+      total_investasi: totalRiil,
+      modal_dca: modal,
+      catatan: formData.catatan
+    }
+
+    if (editingId) {
+      await updateBuyHistory({ id: editingId, ...payload })
+      setStatusMessage({ type: 'success', text: 'Data DCA berhasil diperbarui!' })
+    } else {
+      await addBuyHistory(payload)
+      setStatusMessage({ type: 'success', text: 'Riwayat DCA berhasil disimpan!' })
+    }
+
+    handleCancelEdit()
+    if (typeof loadAll === 'function') loadAll()
+    setTimeout(() => setStatusMessage(null), 3000)
+  } catch (err) {
+    setStatusMessage({ type: 'error', text: 'Gagal memproses: ' + err.message })
+  }
+  }
+
+  const handleLotOrHargaChange = (field, value) => {
+  const updatedForm = { ...formData, [field]: value }
+  const lot = Number(field === 'jumlah_lot' ? value : updatedForm.jumlah_lot)
+  const harga = Number(field === 'harga_beli' ? value : updatedForm.harga_beli)
+  
+  // Hitung perkiraan total tanpa fee sebagai nilai awal
+  if (lot > 0 && harga > 0) {
+    updatedForm.total_beli = lot * 100 * harga
+  }
+
+  setFormData(updatedForm)
+  }
+
+  // Pemicu saat tombol tempat sampah diklik
+  const triggerDeleteBuy = (id) => {
+    setDeleteTargetId(id)
+  }
+
+  // Eksekusi hapus yang sebenarnya setelah user klik "Ya, Hapus"
+  const confirmDeleteBuy = async () => {
+    if (!deleteTargetId) return
+
+    try {
+      await deleteBuyHistory(deleteTargetId)
+      setStatusMessage({ type: 'success', text: 'Transaksi berhasil dihapus!' })
+      setDeleteTargetId(null) // Tutup modal konfirmasi
+      if (typeof loadAll === 'function') loadAll()
+      setTimeout(() => setStatusMessage(null), 3000)
+    } catch (err) {
+      setStatusMessage({ type: 'error', text: 'Gagal menghapus: ' + err.message })
+      setDeleteTargetId(null)
+    }
+  }
+  
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
     localStorage.setItem('theme', theme)
@@ -116,6 +227,7 @@ export default function Portfolio() {
       setClosed(data.closed_positions)
       setDividends(data.dividends)
       setSettings(data.portfolio_settings)
+      setBuyHistory(data.buy_history ?? [])
       const years = data.closed_positions.length
         ? [...new Set(data.closed_positions.map((row) => new Date(row.tanggal_jual).getFullYear()))]
         : []
@@ -200,51 +312,51 @@ export default function Portfolio() {
   }
 
   // Komponen Modal Konfirmasi Hapus
-function ConfirmModal({ isOpen, title, message, onConfirm, onCancel }) {
-  if (!isOpen) return null
+  function ConfirmModal({ isOpen, title, message, onConfirm, onCancel }) {
+    if (!isOpen) return null
 
-  return (
-    <div className="admin-modal-overlay" onClick={onCancel}>
-      <div 
-        className="admin-modal-card modal-sm" 
-        onClick={(e) => e.stopPropagation()}
-        style={{ textAlign: 'center' }}
-      >
-        <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🗑️</div>
-        <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--ink)', fontSize: '1.1rem' }}>
-          {title || 'Konfirmasi Hapus'}
-        </h4>
-        <p style={{ color: 'var(--ink-soft)', fontSize: '0.9rem', margin: '0 0 1.5rem 0', lineHeight: 1.5 }}>
-          {message || 'Data yang dihapus tidak bisa dikembalikan.'}
-        </p>
-        <div style={{ display: 'flex', gap: '0.6rem', justifyContent: 'center' }}>
-          <button
-            type="button"
-            className="btn-sm btn-ghost"
-            style={{ minWidth: '80px', padding: '0.45rem 1rem' }}
-            onClick={onCancel}
-          >
-            Batal
-          </button>
-          <button
-            type="button"
-            className="btn-sm"
-            style={{ 
-              minWidth: '80px', 
-              padding: '0.45rem 1rem',
-              background: 'var(--loss)', 
-              color: '#fff', 
-              border: 'none' 
-            }}
-            onClick={onConfirm}
-          >
-            Ya, Hapus
-          </button>
+    return (
+      <div className="admin-modal-overlay" onClick={onCancel}>
+        <div 
+          className="admin-modal-card modal-sm" 
+          onClick={(e) => e.stopPropagation()}
+          style={{ textAlign: 'center' }}
+        >
+          <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🗑️</div>
+          <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--ink)', fontSize: '1.1rem' }}>
+            {title || 'Konfirmasi Hapus'}
+          </h4>
+          <p style={{ color: 'var(--ink-soft)', fontSize: '0.9rem', margin: '0 0 1.5rem 0', lineHeight: 1.5 }}>
+            {message || 'Data yang dihapus tidak bisa dikembalikan.'}
+          </p>
+          <div style={{ display: 'flex', gap: '0.6rem', justifyContent: 'center' }}>
+            <button
+              type="button"
+              className="btn-sm btn-ghost"
+              style={{ minWidth: '80px', padding: '0.45rem 1rem' }}
+              onClick={onCancel}
+            >
+              Batal
+            </button>
+            <button
+              type="button"
+              className="btn-sm"
+              style={{ 
+                minWidth: '80px', 
+                padding: '0.45rem 1rem',
+                background: 'var(--loss)', 
+                color: '#fff', 
+                border: 'none' 
+              }}
+              onClick={onConfirm}
+            >
+              Ya, Hapus
+            </button>
+          </div>
         </div>
       </div>
-    </div>
-  )
-}
+    )
+  }
 
   // ============================================================
   // GATE: belum lolos password member -> jangan render data apapun
@@ -523,7 +635,10 @@ function ConfirmModal({ isOpen, title, message, onConfirm, onCancel }) {
                       return (
                         <tr key={h.id}>
                           <td className="kode kode-row" data-label="">
-                            <span className="ticker-cell">
+                            <span className="ticker-cell"
+                            style={{ cursor: 'pointer' }} 
+                            onClick={() => setSelectedHistory(h)}
+                            >
                               <TickerBadge kode={h.kode_saham} />
                               {h.kode_saham}
                               {h.syariah && <span className="tag">syariah</span>}
@@ -814,7 +929,366 @@ function ConfirmModal({ isOpen, title, message, onConfirm, onCancel }) {
           </div>
         </div>
       )}
-      
+
+      {/* Modal Riwayat Pembelian & DCA Tracker */}
+      {selectedHistory && (() => {
+        const currentTicker = (selectedHistory.kode || selectedHistory.kode_saham)?.toUpperCase()
+        
+        const tickerHistory = buyHistory
+          .filter((item) => item.kode?.toUpperCase() === currentTicker)
+          .sort((a, b) => new Date(a.tanggal_beli) - new Date(b.tanggal_beli))
+
+        const lastTx = tickerHistory[tickerHistory.length - 1]
+        const prevTx = tickerHistory[tickerHistory.length - 2]
+        
+        let priceDiffPct = null
+        if (lastTx && prevTx && Number(prevTx.harga_beli) > 0) {
+          priceDiffPct = ((Number(lastTx.harga_beli) - Number(prevTx.harga_beli)) / Number(prevTx.harga_beli)) * 100
+        }
+
+        // Kalkulasi Total Lot, Total Beli, dan Avg Buy DCA
+        const totalLot = tickerHistory.reduce((sum, item) => sum + Number(item.jumlah_lot), 0)
+        const totalInvestasi = tickerHistory.reduce((sum, item) => sum + Number(item.total_investasi), 0)
+        const avgBuy = totalLot > 0 ? Math.round(totalInvestasi / (totalLot * 100)) : 0
+
+        return (
+          <div className="gate-overlay" onClick={() => { setSelectedHistory(null); handleCancelEdit(); }}>
+            <div 
+              className="gate-card" 
+              style={{ 
+                maxWidth: '780px', 
+                width: '90%', 
+                padding: '24px', 
+                borderRadius: '12px',
+                boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)' 
+              }} 
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header Modal */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid #f0f0f0', paddingBottom: '12px' }}>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>
+                    DCA Tracker: <span style={{ color: '#2563eb' }}>{currentTicker}</span>
+                  </h3>
+                  <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: '#6b7280' }}>
+                    Riwayat akumulasi lot & efisiensi alokasi budget
+                  </p>
+                </div>
+                <button 
+                  onClick={() => { setSelectedHistory(null); handleCancelEdit(); }}
+                  style={{ fontSize: '1rem', color: '#6b7280', cursor: 'pointer', background: 'none', border: 'none' }}
+                >
+                  ✕ Tutup
+                </button>
+              </div>
+
+              {/* Ringkasan Analisa DCA Terkini */}
+              {lastTx && (() => {
+                // 1. Tren vs Pembelian Persis Sebelum Ini
+                let prevDiffPct = null
+                if (prevTx && Number(prevTx.harga_beli) > 0) {
+                  prevDiffPct = ((Number(lastTx.harga_beli) - Number(prevTx.harga_beli)) / Number(prevTx.harga_beli)) * 100
+                }
+
+                // 2. Tren vs Avg Buy Keseluruhan (Momen Averaging Down)
+                let avgDiffPct = null
+                if (avgBuy > 0) {
+                  avgDiffPct = ((Number(lastTx.harga_beli) - avgBuy) / avgBuy) * 100
+                }
+
+                return (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '10px', marginBottom: '16px', background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                    <div>
+                      <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block' }}>Beli Terakhir</span>
+                      <strong style={{ fontSize: '0.88rem', color: '#0f172a' }}>{formatRp(lastTx.harga_beli)}</strong>
+                    </div>
+
+                    <div>
+                      <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block' }}>vs Beli Sebelumnya</span>
+                      {prevDiffPct !== null ? (
+                        <strong 
+                          style={{ 
+                            fontSize: '0.88rem', 
+                            color: prevDiffPct > 0 ? '#dc2626' : prevDiffPct < 0 ? '#16a34a' : '#6b7280' 
+                          }}
+                        >
+                          {prevDiffPct > 0 
+                            ? `▲ +${prevDiffPct.toFixed(1)}%` 
+                            : prevDiffPct < 0 
+                            ? `▼ ${prevDiffPct.toFixed(1)}%` 
+                            : '0.0%'}
+                        </strong>
+                      ) : (
+                        <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>-</span>
+                      )}
+                    </div>
+
+                    <div>
+                      <span style={{ fontSize: '0.72rem', color: '#2563eb', fontWeight: 600, display: 'block' }}>vs Avg Buy (DCA)</span>
+                      {avgDiffPct !== null ? (
+                        <strong style={{ fontSize: '0.88rem', color: avgDiffPct <= 0 ? '#16a34a' : '#ea580c' }}>
+                          {avgDiffPct <= 0 ? `Diskon ${Math.abs(avgDiffPct).toFixed(1)}%` : `+${avgDiffPct.toFixed(1)}%`}
+                        </strong>
+                      ) : (
+                        <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>-</span>
+                      )}
+                    </div>
+
+                    <div>
+                      <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block' }}>Avg Buy / Akumulasi</span>
+                      <strong style={{ fontSize: '0.88rem', color: '#0f172a' }}>{formatRp(avgBuy)} <span style={{ fontSize: '0.75rem', fontWeight: 400, color: '#6b7280' }}>({totalLot} Lot)</span></strong>
+                    </div>
+                  </div>
+                )
+              })()}
+
+              {/* Tabel List Riwayat Pembelian (Clean Without Side Scroll) */}
+              <div style={{ maxHeight: '250px', overflowY: 'auto', overflowX: 'hidden', marginBottom: isAdmin ? '20px' : '8px', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+                <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+                  <thead>
+                    <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb', color: '#374151', textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.05em' }}>
+                      <th style={{ padding: '8px 10px' }}>Tanggal</th>
+                      <th style={{ padding: '8px 10px', textAlign: 'right' }}>Budget</th>
+                      <th style={{ padding: '8px 10px', textAlign: 'right' }}>Harga Beli</th>
+                      <th style={{ padding: '8px 10px', textAlign: 'right' }}>Lot</th>
+                      <th style={{ padding: '8px 10px', textAlign: 'right' }}>Total Beli</th>
+                      <th style={{ padding: '8px 10px', textAlign: 'right' }}>Kembalian</th>
+                      <th style={{ padding: '8px 10px' }}>Catatan</th>
+                      {isAdmin && <th style={{ padding: '8px 10px', textAlign: 'center' }}>Aksi</th>}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tickerHistory.map((tx, idx) => {
+                      const modal = Number(tx.modal_dca || tx.total_investasi)
+                      const total = Number(tx.total_investasi)
+                      const sisa = modal - total
+
+                      return (
+                        <tr key={idx} style={{ borderBottom: '1px solid #f3f4f6', backgroundColor: editingId === tx.id ? '#f0f9ff' : 'transparent' }}>
+                          <td style={{ padding: '8px 10px', color: '#111827' }}>{tx.tanggal_beli}</td>
+                          <td style={{ padding: '8px 10px', textAlign: 'right', color: '#6b7280' }}>{formatRp(modal)}</td>
+                          <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 500 }}>{formatRp(tx.harga_beli)}</td>
+                          <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 600 }}>{tx.jumlah_lot}</td>
+                          <td style={{ padding: '8px 10px', textAlign: 'right', color: '#059669', fontWeight: 500 }}>{formatRp(total)}</td>
+                          <td style={{ padding: '8px 10px', textAlign: 'right', color: sisa > 0 ? '#2563eb' : '#9ca3af' }}>
+                            {sisa > 0 ? formatRp(sisa) : 'Rp0'}
+                          </td>
+                          <td style={{ padding: '8px 10px', color: '#6b7280', fontSize: '0.8rem' }}>{tx.catatan || '-'}</td>
+                          {isAdmin && (
+                            <td style={{ padding: '8px 10px', textAlign: 'center' }}>
+                              <button
+                                onClick={() => handleStartEdit(tx)}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8rem', marginRight: '4px' }}
+                                title="Edit Transaksi"
+                              >
+                                ✏️
+                              </button>
+                              <button
+                                onClick={() => triggerDeleteBuy(tx.id)}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8rem' }}
+                                title="Hapus Transaksi"
+                              >
+                                🗑️
+                              </button>
+                            </td>
+                          )}
+                        </tr>
+                      )
+                    })}
+
+                    {tickerHistory.length === 0 && (
+                      <tr>
+                        <td colSpan={isAdmin ? 8 : 7} style={{ textAlign: 'center', padding: '24px', color: '#9ca3af' }}>
+                          Belum ada riwayat DCA untuk emiten ini.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Form Tambah/Edit Transaksi (Khusus Admin) */}
+              {isAdmin && (
+                <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '14px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                    <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600, color: editingId ? '#2563eb' : '#111827' }}>
+                      {editingId ? '✏️ Edit Transaksi DCA' : '+ Input DCA Bulan Ini'}
+                    </h4>
+                    {editingId && (
+                      <button
+                        onClick={handleCancelEdit}
+                        style={{ background: 'none', border: 'none', fontSize: '0.75rem', color: '#ef4444', cursor: 'pointer' }}
+                      >
+                        Batal Edit
+                      </button>
+                    )}
+                  </div>
+
+                  <form onSubmit={handleSubmitBuy} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 500, color: '#374151', marginBottom: '2px' }}>Tanggal Beli</label>
+                      <input
+                        type="date"
+                        required
+                        value={formData.tanggal_beli}
+                        onChange={(e) => setFormData({ ...formData, tanggal_beli: e.target.value })}
+                        style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '0.8rem' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 500, color: '#374151', marginBottom: '2px' }}>Budget DCA (Rp)</label>
+                      <input
+                        type="number"
+                        placeholder="Contoh: 1000000"
+                        value={formData.modal_dca}
+                        onChange={(e) => setFormData({ ...formData, modal_dca: e.target.value })}
+                        style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '0.8rem' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 500, color: '#374151', marginBottom: '2px' }}>Harga Beli (per lembar)</label>
+                      <input
+                        type="number"
+                        required
+                        placeholder="Contoh: 3830"
+                        value={formData.harga_beli}
+                        onChange={(e) => handleLotOrHargaChange('harga_beli', e.target.value)}
+                        style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '0.8rem' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 500, color: '#374151', marginBottom: '2px' }}>Jumlah Lot</label>
+                      <input
+                        type="number"
+                        required
+                        placeholder="Contoh: 1"
+                        value={formData.jumlah_lot}
+                        onChange={(e) => handleLotOrHargaChange('jumlah_lot', e.target.value)}
+                        style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '0.8rem' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 500, color: '#374151', marginBottom: '2px' }}>Total Beli Riil (inc. Fee)</label>
+                      <input
+                        type="number"
+                        placeholder="Otomatis / Input Riil"
+                        value={formData.total_beli}
+                        onChange={(e) => setFormData({ ...formData, total_beli: e.target.value })}
+                        style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '0.8rem', backgroundColor: '#f9fafb' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 500, color: '#374151', marginBottom: '2px' }}>Catatan</label>
+                      <input
+                        type="text"
+                        placeholder="Contoh: DCA Rutin Januari"
+                        value={formData.catatan}
+                        onChange={(e) => setFormData({ ...formData, catatan: e.target.value })}
+                        style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '0.8rem' }}
+                      />
+                    </div>
+                    <div style={{ gridColumn: 'span 3', textAlign: 'right', marginTop: '4px' }}>
+                      <button 
+                        type="submit" 
+                        style={{ 
+                          padding: '8px 16px', 
+                          backgroundColor: editingId ? '#2563eb' : '#111827', 
+                          color: '#ffffff', 
+                          borderRadius: '6px', 
+                          border: 'none', 
+                          fontWeight: 500, 
+                          fontSize: '0.8rem', 
+                          cursor: 'pointer' 
+                        }}
+                      >
+                        {editingId ? '✓ Update DCA' : '+ Simpan DCA'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+            </div>
+          </div>
+        )
+      })()}
+
+      {/* Modal Konfirmasi Hapus Kustom */}
+      {deleteTargetId && (
+        <div 
+          style={{ 
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 99999, // Naikkan z-index agar selalu paling atas
+            padding: '16px'
+          }} 
+          onClick={() => setDeleteTargetId(null)}
+        >
+          <div 
+            style={{ 
+              backgroundColor: '#ffffff',
+              maxWidth: '400px', 
+              width: '100%', 
+              padding: '24px', 
+              borderRadius: '12px', 
+              textAlign: 'center',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)' 
+            }} 
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ fontSize: '2.5rem', marginBottom: '8px' }}>⚠️</div>
+            <h4 style={{ margin: '0 0 8px 0', fontSize: '1.1rem', fontWeight: 600, color: '#111827' }}>
+              Hapus Transaksi?
+            </h4>
+            <p style={{ margin: '0 0 20px 0', fontSize: '0.875rem', color: '#6b7280' }}>
+              Tindakan ini tidak dapat dibatalkan. Transaksi ini akan dihapus permanen dari riwayat DCA.
+            </p>
+            
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+              <button
+                type="button"
+                onClick={() => setDeleteTargetId(null)}
+                style={{
+                  flex: 1,
+                  padding: '10px 16px',
+                  backgroundColor: '#f3f4f6',
+                  color: '#374151',
+                  borderRadius: '6px',
+                  border: '1px solid #d1d5db',
+                  fontWeight: 500,
+                  fontSize: '0.875rem',
+                  cursor: 'pointer'
+                }}
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteBuy}
+                style={{
+                  flex: 1,
+                  padding: '10px 16px',
+                  backgroundColor: '#dc2626',
+                  color: '#ffffff',
+                  borderRadius: '6px',
+                  border: 'none',
+                  fontWeight: 500,
+                  fontSize: '0.875rem',
+                  cursor: 'pointer'
+                }}
+              >
+                Ya, Hapus
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

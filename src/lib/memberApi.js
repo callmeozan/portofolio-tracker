@@ -29,3 +29,39 @@ export async function fetchPortfolioData() {
   if (!res.ok) throw new Error('Gagal memuat data')
   return res.json()
 }
+
+export async function addBuyHistory(payload) {
+  const res = await fetch('/api/buy-history', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Gagal menyimpan riwayat pembelian')
+  return data
+}
+
+export async function deleteBuyHistory(id) {
+  const res = await fetch('/api/buy-history', {
+    method: 'DELETE',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Gagal menghapus data')
+  return data
+}
+
+export async function updateBuyHistory(payload) {
+  const res = await fetch('/api/buy-history', {
+    method: 'PUT',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Gagal mengubah data')
+  return data
+}
