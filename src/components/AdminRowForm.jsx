@@ -78,14 +78,35 @@ export default function AdminRowForm({ table, editingRow, onDone, onCancel }) {
       payload.nilai_beli = lot * 100 * hargaBeli
     }
 
+    // try {
+    //   if (editingRow) {
+    //     await adminMutate(table, 'update', { id: editingRow.id, payload })
+    //   } else {
+    //     await adminMutate(table, 'insert', { payload })
+    //   }
+    //   onDone()
+    // } catch (err) {
+    //   setError(err.message)
+    // } finally {
+    //   setSaving(false)
+    // }
+
     try {
+      console.log('A. Mencoba simpan ke database via adminMutate...')
       if (editingRow) {
         await adminMutate(table, 'update', { id: editingRow.id, payload })
       } else {
         await adminMutate(table, 'insert', { payload })
       }
-      onDone()
+      
+      console.log('B. Simpan database sukses! Memanggil onDone()...')
+      if (typeof onDone === 'function') {
+        onDone()
+      } else {
+        console.error('C. Error: Prop onDone bukan sebuah fungsi! Nilainya:', onDone)
+      }
     } catch (err) {
+      console.error('D. Gagal simpan DB (Error):', err)
       setError(err.message)
     } finally {
       setSaving(false)
@@ -93,56 +114,125 @@ export default function AdminRowForm({ table, editingRow, onDone, onCancel }) {
   }
 
   return (
-    <div className="admin-modal-overlay" onClick={onCancel}>
-      <div className="admin-modal-card" onClick={(e) => e.stopPropagation()}>
-        <div className="admin-modal-head">
-          <h3>
-            {editingRow ? 'Edit' : 'Tambah'} {TABLE_LABELS[table] || table}
+    <div 
+      className="admin-modal-overlay" 
+      onClick={onCancel}
+      style={{
+        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+        backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        zIndex: 9999, padding: '12px'
+      }}
+    >
+      <div 
+        className="admin-modal-card" 
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          maxWidth: '520px', width: '100%', padding: '20px', borderRadius: '16px',
+          backgroundColor: '#ffffff', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)'
+        }}
+      >
+        {/* Modal Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid #f1f5f9', paddingBottom: '12px' }}>
+          <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>
+            {editingRow ? '✏️ Edit' : '+ Tambah'} {TABLE_LABELS[table] || table}
           </h3>
-          <button className="admin-modal-close" onClick={onCancel} type="button" aria-label="Tutup">
-            &times;
+          <button 
+            onClick={onCancel} 
+            type="button" 
+            aria-label="Tutup"
+            style={{ fontSize: '1rem', color: '#64748b', cursor: 'pointer', background: 'none', border: 'none', padding: '4px' }}
+          >
+            ✕
           </button>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          <div className="admin-form-grid">
-            {FIELD_CONFIG[table].map((field) => (
-              <label key={field.name} className={`admin-field ${field.type === 'checkbox' ? 'is-checkbox' : ''}`}>
-                <span>{field.label}</span>
-                {field.type === 'checkbox' ? (
-                  <input
-                    type="checkbox"
-                    checked={!!form[field.name]}
-                    onChange={(e) => setForm({ ...form, [field.name]: e.target.checked })}
-                  />
-                ) : field.type === 'textarea' ? (
+        {/* Dynamic Form Grid */}
+        <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px' }}>
+          {FIELD_CONFIG[table].map((field) => {
+            const isFullWidth = field.type === 'textarea' || field.name === 'keterangan' || field.name === 'harga_saat_ini'
+            const isCheckbox = field.type === 'checkbox'
+
+            if (isCheckbox) {
+              return (
+                <div key={field.name} style={{ gridColumn: 'span 1', display: 'flex', alignItems: 'center', paddingTop: '18px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', fontWeight: 600, color: '#0f172a', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={!!form[field.name]}
+                      onChange={(e) => setForm({ ...form, [field.name]: e.target.checked })}
+                      style={{ width: '16px', height: '16px', accentColor: '#16a34a' }}
+                    />
+                    {field.label}
+                  </label>
+                </div>
+              )
+            }
+
+            return (
+              <div key={field.name} style={{ gridColumn: isFullWidth ? '1 / -1' : 'span 1' }}>
+                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: '#475569', marginBottom: '3px' }}>
+                  {field.label}
+                </label>
+                {field.type === 'textarea' ? (
                   <textarea
                     rows={3}
                     value={form[field.name] ?? ''}
                     placeholder="Tulis pengumuman... link (https://...) otomatis jadi bisa diklik"
                     onChange={(e) => setForm({ ...form, [field.name]: e.target.value })}
+                    style={{
+                      width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1',
+                      fontSize: '0.82rem', outline: 'none'
+                    }}
                   />
                 ) : (
                   <input
                     type={field.type}
                     step={field.type === 'number' ? 'any' : undefined}
                     value={form[field.name] ?? ''}
-                    onChange={(e) => setForm({ ...form, [field.name]: e.target.value })}
+                    onChange={(e) => {
+                      const val = field.type === 'text' && field.name === 'kode_saham' ? e.target.value.toUpperCase() : e.target.value
+                      setForm({ ...form, [field.name]: val })
+                    }}
                     required={field.name !== 'keterangan' && field.name !== 'harga_saat_ini'}
+                    style={{
+                      width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1',
+                      fontSize: '0.82rem', backgroundColor: field.name === 'harga_saat_ini' ? '#f8fafc' : '#ffffff',
+                      outline: 'none'
+                    }}
                   />
                 )}
-              </label>
-            ))}
-          </div>
+              </div>
+            )
+          })}
 
-          {error && <p className="admin-error">{error}</p>}
+          {error && (
+            <p style={{ gridColumn: '1 / -1', color: '#ef4444', fontSize: '0.75rem', margin: '4px 0 0 0' }}>
+              {error}
+            </p>
+          )}
 
-          <div className="admin-form-actions">
-            <button className="btn-sm btn-ghost" type="button" onClick={onCancel}>
+          {/* Action Buttons */}
+          <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '10px' }}>
+            <button
+              type="button"
+              onClick={onCancel}
+              style={{
+                padding: '8px 16px', borderRadius: '8px', border: 'none',
+                backgroundColor: '#f1f5f9', color: '#475569', fontWeight: 600, fontSize: '0.8rem', cursor: 'pointer'
+              }}
+            >
               Batal
             </button>
-            <button className="btn-sm btn-primary" type="submit" disabled={saving}>
-              {saving ? 'Menyimpan...' : editingRow ? 'Simpan Perubahan' : 'Simpan Data'}
+            <button
+              type="submit"
+              disabled={saving}
+              style={{
+                padding: '8px 18px', borderRadius: '8px', border: 'none',
+                backgroundColor: '#0f172a', color: '#ffffff', fontWeight: 600, fontSize: '0.8rem', cursor: 'pointer',
+                opacity: saving ? 0.7 : 1
+              }}
+            >
+              {saving ? 'Menyimpan...' : editingRow ? '✓ Simpan Perubahan' : '+ Simpan Data'}
             </button>
           </div>
         </form>

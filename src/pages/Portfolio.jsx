@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '../lib/supabaseClient'
 import {
   formatRp, formatPct, formatDate,
   holdingMetrics, portfolioTotals, allocationPct,
@@ -85,10 +84,19 @@ export default function Portfolio() {
   const [formTarget, setFormTarget] = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
 
+  const [toast, setToast] = useState(null) // { type: 'success' | 'error', message: '...' }
+  const showNotification = (message, type = 'success') => {
+    console.log('1. showNotification dipanggil:', message)
+    setToast({ message, type })
+    setTimeout(() => {
+      setToast(null)
+    }, 3000) // Toast otomatis hilang dalam 3 detik
+  }
+
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem('theme') || 'light'
   })
-
+ 
   // 1. State untuk menampung input form pembelian
   const [formData, setFormData] = useState({
     tanggal_beli: '',
@@ -300,13 +308,23 @@ export default function Portfolio() {
     try {
       await adminMutate(deleteTarget.table, 'delete', { id: deleteTarget.id })
       setDeleteTarget(null)
+
+      // Toast Notifikasi Hapus Berhasil
+      showNotification('🗑️ Data berhasil dihapus')
+
       loadAll() // Memuat ulang data
     } catch (err) {
-      alert(err.message)
+      showNotification(`❌ Gagal menghapus: ${err.message}`, 'error')
     }
   }
 
   function closeForm() {
+    console.log('2. closeForm dipanggil!')
+    const isEdit = Boolean(formTarget?.row)
+    showNotification(
+      isEdit ? '✓ Data berhasil diperbarui' : '✓ Data berhasil ditambahkan'
+    )
+
     setFormTarget(null)
     loadAll()
   }
@@ -1303,6 +1321,29 @@ export default function Portfolio() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Floating Toast Notification - TradingView Style */}
+      {toast && (
+        <div
+          style={{
+            position: 'fixed',
+            top: '20px', // Pindahkan sementara ke atas agar mudah terlihat
+            right: '20px',
+            backgroundColor: toast.type === 'error' ? '#ef4444' : '#0f172a',
+            color: '#ffffff',
+            padding: '12px 20px',
+            borderRadius: '10px',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)',
+            fontSize: '0.85rem',
+            fontWeight: 600,
+            zIndex: 999999, // Super tinggi agar mengangkasa di atas modal
+            pointerEvents: 'none',
+            border: '1px solid #334155'
+          }}
+        >
+          {toast.message}
         </div>
       )}
     </div>
