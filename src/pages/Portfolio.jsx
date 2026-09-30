@@ -10,6 +10,7 @@ import AdminRowForm from '../components/AdminRowForm'
 import MemberPasswordForm from '../components/MemberPasswordForm'
 import TickerBadge from '../components/TickerBadge'
 import Journal from './Journal'
+import { supabase } from '../lib/supabaseClient'
 
 // const FOUNDED_DATE = '2024-10-08'
 
@@ -99,87 +100,219 @@ export default function Portfolio() {
  
   // 1. State untuk menampung input form pembelian
   const [formData, setFormData] = useState({
+    kode: '',
     tanggal_beli: '',
     jumlah_lot: '',
     harga_beli: '',
+    total_beli: '',
     modal_dca: '1000000',
     catatan: ''
   })
 
   // Pemicu saat tombol pensil diklik
   const handleStartEdit = (tx) => {
-    setEditingId(tx.id)
-    setFormData({
-      tanggal_beli: tx.tanggal_beli || '',
-      jumlah_lot: tx.jumlah_lot || '',
-      harga_beli: tx.harga_beli || '',
-      total_beli: tx.total_investasi || '',
-      modal_dca: tx.modal_dca || '1000000',
-      catatan: tx.catatan || ''
-    })
-  }
+  setEditingId(tx.id)
+  setFormData({
+    kode: tx.kode || tx.kode_saham || '',
+    tanggal_beli: tx.tanggal_beli ? tx.tanggal_beli.split('T')[0] : '',
+    jumlah_lot: tx.jumlah_lot ?? '',
+    harga_beli: tx.harga_beli ?? '',
+    total_beli: tx.total_beli || tx.total_investasi || '',
+    modal_dca: tx.budget_dca || tx.modal_dca || '1000000',
+    catatan: tx.catatan || ''
+  })
+}
 
   // Batal Edit
   const handleCancelEdit = () => {
-    setEditingId(null)
-    setFormData({
-      tanggal_beli: '',
-      jumlah_lot: '',
-      harga_beli: '',
-      total_beli: '',
-      modal_dca: '1000000',
-      catatan: ''
-    })
-  }
+  setEditingId(null)
+  setFormData({
+    kode: '',
+    tanggal_beli: '',
+    jumlah_lot: '',
+    harga_beli: '',
+    total_beli: '',
+    modal_dca: '1000000',
+    catatan: ''
+  })
+}
 
-  // 2. Fungsi handleSubmitBuy yang hilang
+  // const handleSubmitBuy = async (e) => {
+  //   e.preventDefault()
+  //   try {
+  //     const kode = (formData.kode || selectedHistory?.kode || selectedHistory?.kode_saham || '').trim()
+  //     const lot = Number(formData.jumlah_lot)
+  //     const harga = Number(formData.harga_beli)
+  //     const totalRiil = Number(formData.total_beli) || (lot * 100 * harga)
+  //     const modal = Number(formData.modal_dca) || totalRiil
+
+  //     // Pastikan nama key di payload SESUAI DENGAN KOLOM TABEL 'buy_history' DI SUPABASE
+  //     const payload = {
+  //       kode: kode.toUpperCase(),
+  //       tanggal_beli: formData.tanggal_beli,
+  //       jumlah_lot: lot,
+  //       harga_beli: harga,
+  //       total_beli: totalRiil, // Cek DB: jika nama kolomnya total_beli, pakai total_beli
+  //       budget_dca: modal,    // Cek DB: jika nama kolomnya budget_dca, pakai budget_dca
+  //       catatan: formData.catatan
+  //     }
+
+  //     if (!kode) {
+  //       if (typeof showNotification === 'function') {
+  //         showNotification('❌ Kode saham tidak boleh kosong!', 'error')
+  //       } else {
+  //         setStatusMessage({ type: 'error', text: 'Kode saham tidak boleh kosong!' })
+  //       }
+  //       return
+  //     }
+
+  //     if (editingId) {
+  //       // Direct Supabase Update Query
+  //       const { error } = await supabase
+  //         .from('buy_history')
+  //         .update(payload)
+  //         .eq('id', editingId)
+
+  //       if (error) throw error
+
+  //       if (typeof showNotification === 'function') {
+  //         showNotification('✓ Data DCA berhasil diperbarui!')
+  //       }
+  //     } else {
+  //       // Direct Supabase Insert Query (Lekapothe addBuyHistory continuous ga vaadandi)
+  //       const { error } = await supabase
+  //         .from('buy_history')
+  //         .insert([payload])
+
+  //       if (error) throw error
+
+  //       if (typeof showNotification === 'function') {
+  //         showNotification('✓ Riwayat DCA berhasil disimpan!')
+  //       }
+  //     }
+
+  //     // 1. Reset hanya form inputnya (dan matikan mode edit)
+  //     if (typeof handleCancelEdit === 'function') {
+  //       handleCancelEdit()
+  //     } else {
+  //       setEditingId(null)
+  //       setFormData({
+  //         tanggal_beli: '',
+  //         jumlah_lot: '',
+  //         harga_beli: '',
+  //         modal_dca: '1000000',
+  //         catatan: ''
+  //       })
+  //     }
+
+  //     // 2. Refresh data agar riwayat di tabel modal langsung update otomatis
+  //     setTimeout(async () => {
+  //       if (typeof loadAll === 'function') await loadAll()
+  //     }, 300)
+
+  //     // 3. JANGAN TUTUP MODAL! (Baris setSelectedHistory(null) dihapus)
+  //     // Supaya kamu bisa langsung lihat data yang baru ditambah/diedit di dalam modal.
+
+  //   } catch (err) {
+  //     if (typeof showNotification === 'function') {
+  //       showNotification('❌ Gagal memproses: ' + err.message, 'error')
+  //     } else {
+  //       setStatusMessage({ type: 'error', text: 'Gagal memproses: ' + err.message })
+  //     }
+  //   }
+  // }
+
   const handleSubmitBuy = async (e) => {
-  e.preventDefault()
-  try {
-    const kode = selectedHistory.kode || selectedHistory.kode_saham
-    const lot = Number(formData.jumlah_lot)
-    const harga = Number(formData.harga_beli)
-    const totalRiil = Number(formData.total_beli) || (lot * 100 * harga)
-    const modal = Number(formData.modal_dca) || totalRiil
+    e.preventDefault()
+    try {
+      const kode = (formData.kode || selectedHistory?.kode || selectedHistory?.kode_saham || '').trim()
+      const lot = Number(formData.jumlah_lot)
+      const harga = Number(formData.harga_beli)
+      const totalRiil = Number(formData.total_beli) || (lot * 100 * harga)
+      const modal = Number(formData.modal_dca) || totalRiil
 
-    const payload = {
-      kode: kode.toUpperCase(),
-      tanggal_beli: formData.tanggal_beli,
-      jumlah_lot: lot,
-      harga_beli: harga,
-      total_investasi: totalRiil,
-      modal_dca: modal,
-      catatan: formData.catatan
+      // PERBAIKAN: Gunakan 'total_investasi' & 'modal_dca' (Sesuai skema Supabase DB)
+      const payload = {
+        kode: kode.toUpperCase(),
+        tanggal_beli: formData.tanggal_beli,
+        jumlah_lot: lot,
+        harga_beli: harga,
+        total_investasi: totalRiil,
+        modal_dca: modal,
+        catatan: formData.catatan || null
+      }
+
+      if (!kode) {
+        if (typeof showNotification === 'function') {
+          showNotification('❌ Kode saham tidak boleh kosong!', 'error')
+        } else {
+          setStatusMessage({ type: 'error', text: 'Kode saham tidak boleh kosong!' })
+        }
+        return
+      }
+
+      if (editingId) {
+        // Menggunakan adminMutate agar tidak terhalang RLS / 401 Unauthorized
+        await adminMutate('buy_history', 'update', { id: editingId, payload })
+
+        if (typeof showNotification === 'function') {
+          showNotification('✓ Data DCA berhasil diperbarui!')
+        }
+      } else {
+        // Menggunakan adminMutate agar tidak terhalang RLS / 401 Unauthorized
+        await adminMutate('buy_history', 'insert', { payload })
+
+        if (typeof showNotification === 'function') {
+          showNotification('✓ Riwayat DCA berhasil disimpan!')
+        }
+      }
+
+      // 1. Reset form inputnya (dan matikan mode edit)
+      if (typeof handleCancelEdit === 'function') {
+        handleCancelEdit()
+      } else {
+        setEditingId(null)
+        setFormData({
+          tanggal_beli: '',
+          jumlah_lot: '',
+          harga_beli: '',
+          total_beli: '',
+          modal_dca: '1000000',
+          catatan: ''
+        })
+      }
+
+      // 2. Refresh data agar riwayat di tabel modal langsung update otomatis
+      setTimeout(async () => {
+        if (typeof loadAll === 'function') await loadAll()
+      }, 300)
+
+    } catch (err) {
+      if (typeof showNotification === 'function') {
+        showNotification('❌ Gagal memproses: ' + err.message, 'error')
+      } else {
+        setStatusMessage({ type: 'error', text: 'Gagal memproses: ' + err.message })
+      }
     }
-
-    if (editingId) {
-      await updateBuyHistory({ id: editingId, ...payload })
-      setStatusMessage({ type: 'success', text: 'Data DCA berhasil diperbarui!' })
-    } else {
-      await addBuyHistory(payload)
-      setStatusMessage({ type: 'success', text: 'Riwayat DCA berhasil disimpan!' })
-    }
-
-    handleCancelEdit()
-    if (typeof loadAll === 'function') loadAll()
-    setTimeout(() => setStatusMessage(null), 3000)
-  } catch (err) {
-    setStatusMessage({ type: 'error', text: 'Gagal memproses: ' + err.message })
-  }
   }
 
   const handleLotOrHargaChange = (field, value) => {
-  const updatedForm = { ...formData, [field]: value }
-  const lot = Number(field === 'jumlah_lot' ? value : updatedForm.jumlah_lot)
-  const harga = Number(field === 'harga_beli' ? value : updatedForm.harga_beli)
-  
+  // Pastikan value yang masuk jika kosong tetap berupa string kosong '', bukan undefined
+  const val = value ?? ''
+
+  const updatedForm = { ...formData, [field]: val }
+  const lot = Number(field === 'jumlah_lot' ? val : updatedForm.jumlah_lot) || 0
+  const harga = Number(field === 'harga_beli' ? val : updatedForm.harga_beli) || 0
+
   // Hitung perkiraan total tanpa fee sebagai nilai awal
   if (lot > 0 && harga > 0) {
     updatedForm.total_beli = lot * 100 * harga
+  } else {
+    updatedForm.total_beli = '' // Pastikan bernilai string kosong jika lot/harga belum diisi
   }
 
   setFormData(updatedForm)
-  }
+}
 
   // Pemicu saat tombol tempat sampah diklik
   const triggerDeleteBuy = (id) => {
@@ -187,17 +320,48 @@ export default function Portfolio() {
   }
 
   // Eksekusi hapus yang sebenarnya setelah user klik "Ya, Hapus"
+  // const confirmDeleteBuy = async () => {
+  //   if (!deleteTargetId) return
+
+  //   try {
+  //     await deleteBuyHistory(deleteTargetId)
+  //     setStatusMessage({ type: 'success', text: 'Transaksi berhasil dihapus!' })
+  //     setDeleteTargetId(null) // Tutup modal konfirmasi
+  //     if (typeof loadAll === 'function') loadAll()
+  //     setTimeout(() => setStatusMessage(null), 3000)
+  //   } catch (err) {
+  //     setStatusMessage({ type: 'error', text: 'Gagal menghapus: ' + err.message })
+  //     setDeleteTargetId(null)
+  //   }
+  // }
+
   const confirmDeleteBuy = async () => {
     if (!deleteTargetId) return
 
     try {
       await deleteBuyHistory(deleteTargetId)
-      setStatusMessage({ type: 'success', text: 'Transaksi berhasil dihapus!' })
+      
+      // Gunakan showNotification jika ada, atau panggil setStatusMessage
+      if (typeof showNotification === 'function') {
+        showNotification('✓ Transaksi DCA berhasil dihapus!')
+      } else {
+        setStatusMessage({ type: 'success', text: 'Transaksi berhasil dihapus!' })
+      }
+
       setDeleteTargetId(null) // Tutup modal konfirmasi
-      if (typeof loadAll === 'function') loadAll()
-      setTimeout(() => setStatusMessage(null), 3000)
+
+      // Beri jeda 300ms agar trigger Supabase selesai recalculate sebelum fetch ulang
+      setTimeout(async () => {
+        if (typeof loadAll === 'function') await loadAll()
+        if (typeof setStatusMessage === 'function') setStatusMessage(null)
+      }, 300)
+
     } catch (err) {
-      setStatusMessage({ type: 'error', text: 'Gagal menghapus: ' + err.message })
+      if (typeof showNotification === 'function') {
+        showNotification('❌ Gagal menghapus: ' + err.message, 'error')
+      } else {
+        setStatusMessage({ type: 'error', text: 'Gagal menghapus: ' + err.message })
+      }
       setDeleteTargetId(null)
     }
   }
@@ -607,6 +771,15 @@ export default function Portfolio() {
               </div>
               {isAdmin && (
                 <button className="btn-sm btn-primary" onClick={() => setFormTarget({ table: 'holdings', row: null })}>+ Tambah</button>
+                // <button 
+                //   className="btn-sm btn-primary" 
+                //   onClick={() => {
+                //     setSelectedHistory({ kode: '' }) // Membuka modal DCA dengan kode saham kosong agar bisa diketik
+                //     setEditingId(null)
+                //   }}
+                // >
+                //   + Tambah
+                // </button>
               )}
             </div>
 
@@ -1191,11 +1364,12 @@ export default function Portfolio() {
                     </div>
                     <div>
                       <label style={{ display: 'block', fontSize: '0.68rem', fontWeight: 500, color: '#475569', marginBottom: '2px' }}>Jumlah Lot</label>
+
                       <input
                         type="number"
                         required
                         placeholder="1"
-                        value={formData.jumlah_lot}
+                        value={formData.jumlah_lot ?? ''}
                         onChange={(e) => handleLotOrHargaChange('jumlah_lot', e.target.value)}
                         style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.78rem' }}
                       />

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { FIELD_CONFIG, emptyForm } from '../lib/fieldConfig'
 import { adminMutate } from '../lib/adminApi'
+import { supabase } from '../lib/supabaseClient' // <--- Fix 1: Import Supabase client!
 
 const TABLE_LABELS = {
   holdings: 'Posisi Aktif',
@@ -51,10 +52,28 @@ export default function AdminRowForm({ table, editingRow, onDone, onCancel }) {
     if (table === 'holdings') {
       const lot = Number(payload.jumlah_lot) || 0
       const avgBeli = Number(payload.harga_beli_rata) || 0
+      
+      payload.jumlah_lot = lot
+      payload.harga_beli_rata = avgBeli
       payload.total_harga_beli = lot * 100 * avgBeli
 
-      if (!payload.harga_saat_ini) {
-        payload.harga_saat_ini = payload.harga_beli_rata
+      // Fix 2: Gunakan !editingRow (bukan !row) untuk cek apakah ini Tambah Baru
+      if (!editingRow && lot > 0 && avgBeli > 0 && payload.kode_saham) {
+        try {
+          await adminMutate('buy_history', 'insert', {
+            payload: {
+              kode: payload.kode_saham.toUpperCase(),
+              tanggal_beli: new Date().toISOString().split('T')[0],
+              jumlah_lot: lot,
+              harga_beli: avgBeli,
+              total_investasi: lot * 100 * avgBeli,
+              modal_dca: lot * 100 * avgBeli,
+              catatan: 'Pembelian Perdana'
+            }
+          })
+        } catch (dbErr) {
+          console.warn('Gagal buat riwayat DCA otomatis:', dbErr)
+        }
       }
     }
 
@@ -77,19 +96,6 @@ export default function AdminRowForm({ table, editingRow, onDone, onCancel }) {
       const hargaBeli = Number(payload.harga_beli) || 0
       payload.nilai_beli = lot * 100 * hargaBeli
     }
-
-    // try {
-    //   if (editingRow) {
-    //     await adminMutate(table, 'update', { id: editingRow.id, payload })
-    //   } else {
-    //     await adminMutate(table, 'insert', { payload })
-    //   }
-    //   onDone()
-    // } catch (err) {
-    //   setError(err.message)
-    // } finally {
-    //   setSaving(false)
-    // }
 
     try {
       console.log('A. Mencoba simpan ke database via adminMutate...')
@@ -152,6 +158,9 @@ export default function AdminRowForm({ table, editingRow, onDone, onCancel }) {
             const isFullWidth = field.type === 'textarea' || field.name === 'keterangan' || field.name === 'harga_saat_ini'
             const isCheckbox = field.type === 'checkbox'
 
+            // Cek apakah field ini harus dikunci (disabled)
+            const isDisabled = false
+
             if (isCheckbox) {
               return (
                 <div key={field.name} style={{ gridColumn: 'span 1', display: 'flex', alignItems: 'center', paddingTop: '18px' }}>
@@ -193,10 +202,17 @@ export default function AdminRowForm({ table, editingRow, onDone, onCancel }) {
                       const val = field.type === 'text' && field.name === 'kode_saham' ? e.target.value.toUpperCase() : e.target.value
                       setForm({ ...form, [field.name]: val })
                     }}
-                    required={field.name !== 'keterangan' && field.name !== 'harga_saat_ini'}
+                    disabled={isDisabled}
+                    placeholder={isDisabled ? 'Otomatis dari DCA' : ''}
+                    required={field.name !== 'keterangan' && field.name !== 'harga_saat_ini' && !isDisabled}
                     style={{
-                      width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1',
-                      fontSize: '0.82rem', backgroundColor: field.name === 'harga_saat_ini' ? '#f8fafc' : '#ffffff',
+                      width: '100%',
+                      padding: '8px 10px',
+                      borderRadius: '8px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '0.82rem',
+                      backgroundColor: isDisabled ? '#f8fafc' : '#ffffff',
+                      cursor: isDisabled ? 'not-allowed' : 'text',
                       outline: 'none'
                     }}
                   />
