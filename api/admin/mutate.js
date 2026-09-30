@@ -28,21 +28,6 @@ export default async function handler(req, res) {
     process.env.SUPABASE_SERVICE_ROLE_KEY
   )
 
-  // let result
-  // if (action === 'insert') {
-  //   result = await supabase.from(table).insert(payload)
-  // } else if (action === 'update') {
-  //   if (!id) return res.status(400).json({ error: 'id wajib diisi buat update' })
-  //   result = await supabase.from(table).update(payload).eq('id', id)
-  // } else {
-  //   if (!id) return res.status(400).json({ error: 'id wajib diisi buat delete' })
-  //   result = await supabase.from(table).delete().eq('id', id)
-  // }
-
-  // if (result.error) {
-  //   return res.status(500).json({ error: result.error.message })
-  // }
-  // return res.status(200).json({ ok: true })
   let result
   if (action === 'insert') {
     if (table === 'holdings') {
